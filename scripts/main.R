@@ -31,6 +31,7 @@ dir.create(resultDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
 fileAvAUCs <- file(paste(resultDir, "AvAUCs.csv", sep=""), "w")
 
 source("functions/computeWeights.R")
+source("functions/manualStratify.R")
 
 for (iDataSet in 1:length(data_names))
 {
@@ -44,7 +45,8 @@ for (iDataSet in 1:length(data_names))
   
   # stratification for evaluation7
   
-  folds <- createFolds(y, k=kFolds, returnTrain=TRUE)
+  folds <- manualStratify(y, kFolds)
+  # folds <- createFolds(y, k=kFolds, returnTrain=TRUE)
   
   #
   
@@ -70,6 +72,8 @@ for (iDataSet in 1:length(data_names))
     # alpha=1 (default), lasso; alpha=0, ridge
     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
                      type.measure="auc", alpha=0, weights=weight_vec)
+#     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
+#                      type.measure="auc", alpha=0)
     
 #     png(filename=paste(resultDir, "lambdaSelection_fold_", iFold, ".png"))
 #     plot(cv.fit)
