@@ -8,6 +8,8 @@ library(caret)
 kFoldsEval <- 5
 kFoldsVal <- 4
 alphaVals <- seq(0,1,0.1)
+log_lambda_seq <- seq(log(1e-4),log(1e4),0.1)
+lambda_seq <- exp(log_lambda_seq)
 
 # data
 
@@ -114,7 +116,8 @@ for (iDataSet in 1:length(data_names))
       # alpha=1 (default), lasso; alpha=0, ridge
       cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
                        type.measure="auc", alpha=alphaVals[iAlpha], 
-                       weights=weight_vec, nfolds=kFoldsVal)
+                       weights=weight_vec, nfolds=kFoldsVal, 
+                       lambda=lambda_seq)
       #     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
       #                      type.measure="auc", alpha=0)
       
