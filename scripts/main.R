@@ -2,14 +2,25 @@ library(glmnet)
 library(pROC)
 library(ROCR)
 library(caret)
+library(doParallel)
+
+#
+
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl, cores = detectCores() - 1)
 
 # params
 
 kFoldsEval <- 5
 kFoldsVal <- 4
 alphaVals <- seq(0,1,0.1)
-log_lambda_seq <- seq(log(1e-4),log(1e4),0.1)
+# alphaVals <- c(1)
+log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=1000)
 lambda_seq <- exp(log_lambda_seq)
+
+# 
+
+ptm <- proc.time()
 
 # data
 
@@ -24,8 +35,12 @@ data_names <- c("B2B_edssprog",
                 "continue_edssprog",
                 "continue_relapse_fu_any")
 
-# data_names <- c("B2S_edssprog",
-#                 "continue_relapse_fu_any")
+# data_names <- c("B2B_edssprog", 
+#                 "B2B_relapse_fu_any",
+#                 "B2F_edssprog",
+#                 "B2F_relapse_fu_any",
+#                 "B2S_edssprog",
+#                 "B2S_relapse_fu_any")
 
 #
 
@@ -117,7 +132,7 @@ for (iDataSet in 1:length(data_names))
       cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
                        type.measure="auc", alpha=alphaVals[iAlpha], 
                        weights=weight_vec, nfolds=kFoldsVal, 
-                       lambda=lambda_seq)
+                       lambda=lambda_seq, parallel=TRUE)
       #     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
       #                      type.measure="auc", alpha=0)
       
@@ -160,5 +175,7 @@ for (iDataSet in 1:length(data_names))
 
 close(fileAvAUCs)
 
+runtime <- proc.time() - ptm
 
+cat(paste("Time elapsed:", round(runtime[3],1), "seconds."))
 
