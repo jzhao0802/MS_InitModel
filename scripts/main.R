@@ -6,6 +6,10 @@ library(doParallel)
 
 #
 
+rm(list=ls())
+
+#
+
 cl <- makeCluster(detectCores() - 1)
 registerDoParallel(cl, cores = detectCores() - 1)
 
@@ -143,7 +147,8 @@ for (iDataSet in 1:length(data_names))
       
       # test
       
-      preds_probs <- predict(cv.fit, newx = X_test, type="response")
+      preds_probs <- predict(cv.fit, newx = X_test, type="response",
+                             s="lambda.min")
       
       # result metrics
       
@@ -178,4 +183,6 @@ close(fileAvAUCs)
 runtime <- proc.time() - ptm
 
 cat(paste("Time elapsed:", round(runtime[3],1), "seconds."))
+
+stopCluster(cl)
 
