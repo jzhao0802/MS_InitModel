@@ -5,7 +5,8 @@ library(caret)
 
 # params
 
-kFolds = 5
+kFoldsEval <- 5
+kFoldsVal <- 4
 
 # data
 
@@ -41,17 +42,17 @@ for (iDataSet in 1:length(data_names))
                       header=TRUE, sep=",")
   
   X <- data.matrix(dataset[, 2:ncol(dataset)])
-  y <- data.matrix(dataset[, 1])
+  y <- dataset[, 1]
   
   # stratification for evaluation7
   
-  folds <- manualStratify(y, kFolds)
+  folds <- manualStratify(y, kFoldsEval)
   # folds <- createFolds(y, k=kFolds, returnTrain=TRUE)
   
   #
   
-  aucs_all_folds <- matrix(data=NA, nrow=kFolds, ncol=1)
-  lambda_all_folds <- matrix(data=NA, nrow=kFolds, ncol=1)
+  aucs_all_folds <- matrix(data=NA, nrow=kFoldsEval, ncol=1)
+  lambda_all_folds <- matrix(data=NA, nrow=kFoldsEval, ncol=1)
   
   for (iFold in 1:length(folds))
   {
@@ -71,7 +72,8 @@ for (iDataSet in 1:length(data_names))
     set.seed(1011)
     # alpha=1 (default), lasso; alpha=0, ridge
     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
-                     type.measure="auc", alpha=0, weights=weight_vec)
+                     type.measure="auc", alpha=0, weights=weight_vec,
+                     nfolds=kFoldsVal)
 #     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
 #                      type.measure="auc", alpha=0)
     
