@@ -7,7 +7,7 @@ library(caret)
 
 kFoldsEval <- 5
 kFoldsVal <- 4
-alphaVals <- seq(0,1,0.5)
+alphaVals <- seq(0,1,0.1)
 
 # data
 
@@ -21,6 +21,9 @@ data_names <- c("B2B_edssprog",
                 "B2S_relapse_fu_any",
                 "continue_edssprog",
                 "continue_relapse_fu_any")
+
+# data_names <- c("B2S_edssprog",
+#                 "continue_relapse_fu_any")
 
 #
 
@@ -78,12 +81,19 @@ for (iDataSet in 1:length(data_names))
            col="red", pch=20)
     dev.off()
     
+    if ((data_names[iDataSet] == "continue_edssprog") | (data_names[iDataSet] == "continue_relapse_fu_any"))
+    {
+      dayssup_name <- "precont_dayssup"
+    } else
+    {
+      dayssup_name <- "switch_rx_dayssup"
+    }
     png(filename=paste(resultDir, data_names[iDataSet], "age_dayssup_fold_", iFold, ".png"))
     plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
-         X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="switch_rx_dayssup")],
+         X_train_val[which(y_train_val==0),which(colnames(X_train_val)==dayssup_name)],
          col="blue", pch=5)
     points(X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="age")], 
-           X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="switch_rx_dayssup")],
+           X_train_val[which(y_train_val==1),which(colnames(X_train_val)==dayssup_name)],
            col="red", pch=20)
     dev.off()
     
@@ -141,8 +151,8 @@ for (iDataSet in 1:length(data_names))
               file=paste(resultDir,data_names[iDataSet],"_lambdas.csv"), col.names=NA)
   
   if (iDataSet == 1)
-    writeLines(paste("", colnames(aucs_all_folds_allAlphas),sep=","), fileAvAUCs)
-  writeLines(paste(data_names[iDataSet], colMeans(aucs_all_folds_allAlphas), sep=","), fileAvAUCs)
+    writeLines(paste("", paste(colnames(aucs_all_folds_allAlphas),collapse=","),sep=","), fileAvAUCs)
+  writeLines(paste(data_names[iDataSet], paste(colMeans(aucs_all_folds_allAlphas),collapse=","), sep=","), fileAvAUCs)
 }
 
 close(fileAvAUCs)
