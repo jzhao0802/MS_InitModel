@@ -18,8 +18,8 @@ registerDoParallel(cl, cores = detectCores() - 1)
 kFoldsEval <- 5
 kFoldsVal <- 4
 alphaVals <- seq(0,1,0.1)
-# alphaVals <- c(1)
-log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=1000)
+# alphaVals <- c(0)
+log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=100)
 lambda_seq <- exp(log_lambda_seq)
 
 # 
@@ -28,7 +28,7 @@ ptm <- proc.time()
 
 # data
 
-data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-08-25/2015-08-25 11.18.18/"
+data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-08-27/2015-08-27 09.33.28/"
 
 data_names <- c("B2B_edssprog", 
                 "B2B_relapse_fu_any",
@@ -37,14 +37,18 @@ data_names <- c("B2B_edssprog",
                 "B2S_edssprog",
                 "B2S_relapse_fu_any",
                 "continue_edssprog",
-                "continue_relapse_fu_any")
+                "continue_relapse_fu_any",
+                "B2B_edssprog_or_relapse_fu",
+                "B2F_edssprog_or_relapse_fu",
+                "B2S_edssprog_or_relapse_fu",
+                "continue_edssprog_or_relapse_fu")
 
-# data_names <- c("B2B_edssprog", 
-#                 "B2B_relapse_fu_any",
-#                 "B2F_edssprog",
-#                 "B2F_relapse_fu_any",
-#                 "B2S_edssprog",
-#                 "B2S_relapse_fu_any")
+# data_names <- c("B2B_edssprog_or_relapse_fu",
+#                 "B2F_edssprog_or_relapse_fu",
+#                 "B2S_edssprog_or_relapse_fu",
+#                 "continue_edssprog_or_relapse_fu")
+
+# data_names <- c("continue_edssprog_or_relapse_fu")
 
 #
 
@@ -102,7 +106,8 @@ for (iDataSet in 1:length(data_names))
            col="red", pch=20)
     dev.off()
     
-    if ((data_names[iDataSet] == "continue_edssprog") | (data_names[iDataSet] == "continue_relapse_fu_any"))
+    if (any(data_names[iDataSet] == 
+            c("continue_edssprog", "continue_relapse_fu_any", "continue_edssprog_or_relapse_fu")))
     {
       dayssup_name <- "precont_dayssup"
     } else
@@ -162,7 +167,7 @@ for (iDataSet in 1:length(data_names))
       cat("AUC: ", rocValues$auc, "\n")
       aucs_all_folds_allAlphas[iFold, iAlpha] = rocValues$auc
       colnames(aucs_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-      lambda_all_folds_allAlphas[iFold, iAlpha] = cv.fit$lambda.1se
+      lambda_all_folds_allAlphas[iFold, iAlpha] = cv.fit$lambda.min
       colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
     }
   }
