@@ -15,8 +15,7 @@ registerDoParallel(cl, cores = detectCores() - 1)
 
 # params
 
-kFoldsEval <- 5
-kFoldsVal <- 4
+
 # alphaVals <- seq(0,1,0.1)
 alphaVals <- c(1)
 log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=70)
@@ -28,20 +27,7 @@ ptm <- proc.time()
 
 # data
 
-data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-02/2015-09-02 20.10.46/"
-
-# data_names <- c("B2B_edssprog", 
-#                 "B2B_relapse_fu_any",
-#                 "B2F_edssprog",
-#                 "B2F_relapse_fu_any",
-#                 "B2S_edssprog",
-#                 "B2S_relapse_fu_any",
-#                 "continue_edssprog",
-#                 "continue_relapse_fu_any",
-#                 "B2B_edssprog_or_relapse_fu",
-#                 "B2F_edssprog_or_relapse_fu",
-#                 "B2S_edssprog_or_relapse_fu",
-#                 "continue_edssprog_or_relapse_fu")
+data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-02/2015-09-02 20.56.51/"
 
 # data_names <- c("B2B_edssprog", 
 #                 "B2B_relapse_fu_any_01",
@@ -83,12 +69,15 @@ for (iDataSet in 1:length(data_names))
   dataset <- read.csv(paste(data_dir, "data_", data_names[iDataSet],"_initmodel.csv", sep=""), 
                       header=TRUE, sep=",")
   
-  X <- data.matrix(dataset[, 2:ncol(dataset)])
+  X <- data.matrix(dataset[, 2:ncol(dataset)-1])
   y <- dataset[, 1]
   
   # stratification for evaluation7
   
-  folds <- manualStratify(y, kFoldsEval)
+  folds <- getPredefinedFolds(dataset[,ncol(dataset)])
+  kFoldsEval <- length(folds)
+  kFoldsVal <- length(folds) - 1
+  # folds <- manualStratify(y, kFoldsEval)
   # folds <- createFolds(y, k=kFolds, returnTrain=TRUE)
   
   #
@@ -100,26 +89,32 @@ for (iDataSet in 1:length(data_names))
   colnames(lambda_all_folds_allAlphas) <- rep("",ncol(lambda_all_folds_allAlphas))
   rownames(lambda_all_folds_allAlphas) <- rep("",nrow(lambda_all_folds_allAlphas))
   
-  for (iFold in 1:length(folds))
+  for (iFold in 1:kFoldsEval)
   {
-    train_val_ids <- folds[[iFold]]
-    X_train_val <- X[train_val_ids,]
-    X_test <- X[-train_val_ids,]
-    y_train_val <- y[train_val_ids]
-    y_test <- y[-train_val_ids]
+    test_ids <- folds[[iFold]]
+    X_test <- X[test_ids, ]
+    y_test <- y[test_ids]
+    X_train_val <- X[-test_ids,]
+    y_train_val <- y[-test_ids]
     
-    # plot the ordinal variables
-    png(filename=paste(resultDir, data_names[iDataSet], 
-                       "age_edss_fold_", iFold, ".png", sep=""))
-    plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
-         X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="baseline_edss_score")],
-         col="blue", pch=5)
-    points(X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="age")], 
-           X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="baseline_edss_score")],
-           col="red", pch=20)
-    dev.off()
+#     train_val_ids <- folds[[iFold]]
+#     X_train_val <- X[train_val_ids,]
+#     X_test <- X[-train_val_ids,]
+#     y_train_val <- y[train_val_ids]
+#     y_test <- y[-train_val_ids]
     
-    if (any(data_names[iDataSet] == 
+#     # plot the ordinal variables
+#     png(filename=paste(resultDir, data_names[iDataSet], 
+#                        "age_edss_fold_", iFold, ".png", sep=""))
+#     plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
+#          X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="baseline_edss_score")],
+#          col="blue", pch=5)
+#     points(X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="age")], 
+#            X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="baseline_edss_score")],
+#            col="red", pch=20)
+#     dev.off()
+    
+    if (any(data_names[iDataSet] == ???
             c("continue_edssprog", "continue_relapse_fu_any_01", 
               "continue_edssconf3", "continue_confrelapse",
               "continue_progrelapse")))
