@@ -17,8 +17,8 @@ registerDoParallel(cl, cores = detectCores() - 1)
 
 kFoldsEval <- 5
 kFoldsVal <- 4
-alphaVals <- seq(0,1,0.1)
-# alphaVals <- c(1)
+# alphaVals <- seq(0,1,0.1)
+alphaVals <- c(1)
 log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=70)
 lambda_seq <- exp(log_lambda_seq)
 
@@ -43,24 +43,24 @@ data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-02/2015-09-02 20
 #                 "B2S_edssprog_or_relapse_fu",
 #                 "continue_edssprog_or_relapse_fu")
 
-data_names <- c("B2B_edssprog", 
-                "B2B_relapse_fu_any_01",
-                "B2B_progrelapse",
-                "B2F_edssprog",
-                "B2F_relapse_fu_any_01",
-                "B2F_progrelapse",
-                "B2S_edssprog",
-                "B2S_edssconf3",
-                "B2S_relapse_fu_any_01",
-                "B2S_confrelapse",
-                "B2S_progrelapse",
-                "continue_edssprog",
-                "continue_edssconf3",
-                "continue_relapse_fu_any_01",
-                "continue_confrelapse",
-                "continue_progrelapse")
+# data_names <- c("B2B_edssprog", 
+#                 "B2B_relapse_fu_any_01",
+#                 "B2B_progrelapse",
+#                 "B2F_edssprog",
+#                 "B2F_relapse_fu_any_01",
+#                 "B2F_progrelapse",
+#                 "B2S_edssprog",
+#                 "B2S_edssconf3",
+#                 "B2S_relapse_fu_any_01",
+#                 "B2S_confrelapse",
+#                 "B2S_progrelapse",
+#                 "continue_edssprog",
+#                 "continue_edssconf3",
+#                 "continue_relapse_fu_any_01",
+#                 "continue_confrelapse",
+#                 "continue_progrelapse")
 
-# data_names <- c("continue_edssconf3")
+data_names <- c("B2B_edssprog", "continue_edssconf3")
 
 #
 
@@ -109,7 +109,8 @@ for (iDataSet in 1:length(data_names))
     y_test <- y[-train_val_ids]
     
     # plot the ordinal variables
-    png(filename=paste(resultDir, data_names[iDataSet], "age_edss_fold_", iFold, ".png"))
+    png(filename=paste(resultDir, data_names[iDataSet], 
+                       "age_edss_fold_", iFold, ".png", sep=""))
     plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
          X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="baseline_edss_score")],
          col="blue", pch=5)
@@ -128,7 +129,8 @@ for (iDataSet in 1:length(data_names))
     {
       dayssup_name <- "switch_rx_dayssup"
     }
-    png(filename=paste(resultDir, data_names[iDataSet], "age_dayssup_fold_", iFold, ".png"))
+    png(filename=paste(resultDir, data_names[iDataSet], "age_dayssup_fold_", 
+                       iFold, ".png", sep=""))
     plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
          X_train_val[which(y_train_val==0),which(colnames(X_train_val)==dayssup_name)],
          col="blue", pch=5)
@@ -156,6 +158,11 @@ for (iDataSet in 1:length(data_names))
                        type.measure="auc", alpha=alphaVals[iAlpha], 
                        weights=weight_vec, nfolds=kFoldsVal, 
                        lambda=lambda_seq, parallel=TRUE)
+      
+      save(cv.fit, file=paste(resultDir, "model_", data_names[iDataSet], "alpha", 
+                              alphaVals[iAlpha], "_fold_", iFold, ".RData", sep=""))
+      
+      
       #     cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial", 
       #                      type.measure="auc", alpha=0)
       
@@ -169,11 +176,15 @@ for (iDataSet in 1:length(data_names))
       preds_probs <- predict(cv.fit, newx = X_test, type="response",
                              s="lambda.min")
       
+      save(preds_probs, file=paste(resultDir, "preds_", data_names[iDataSet], "alpha", 
+                                   alphaVals[iAlpha], "_fold_", iFold, ".RData", sep=""))
+      
       # result metrics
       
       pred <- prediction(predictions=preds_probs, labels=y_test)
       perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-      png(filename=paste(resultDir, data_names[iDataSet], "_roc_alpha", alphaVals[iAlpha], "_fold_", iFold, ".png"))
+      png(filename=paste(resultDir, data_names[iDataSet], "_roc_alpha", 
+                         alphaVals[iAlpha], "_fold_", iFold, ".png", sep=""))
       plot(perf, col=rainbow(10))
       dev.off()
       
@@ -188,9 +199,9 @@ for (iDataSet in 1:length(data_names))
    
   
   write.table(aucs_all_folds_allAlphas, sep=",", 
-              file=paste(resultDir,data_names[iDataSet],"_aucs.csv"), col.names=NA)
+              file=paste(resultDir,data_names[iDataSet],"_aucs.csv", sep=""), col.names=NA)
   write.table(lambda_all_folds_allAlphas, sep=",", 
-              file=paste(resultDir,data_names[iDataSet],"_lambdas.csv"), col.names=NA)
+              file=paste(resultDir,data_names[iDataSet],"_lambdas.csv", sep=""), col.names=NA)
   
   if (iDataSet == 1)
     writeLines(paste("", paste(colnames(aucs_all_folds_allAlphas),collapse=","),sep=","), fileAvAUCs)
