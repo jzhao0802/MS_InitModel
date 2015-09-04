@@ -18,8 +18,8 @@ registerDoParallel(cl, cores = detectCores() - 1)
 kFoldsEval <- 5
 kFoldsVal <- 4
 alphaVals <- seq(0,1,0.1)
-# alphaVals <- c(0)
-log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=100)
+# alphaVals <- c(1)
+log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=70)
 lambda_seq <- exp(log_lambda_seq)
 
 # 
@@ -28,27 +28,39 @@ ptm <- proc.time()
 
 # data
 
-data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-08-27/2015-08-27 09.33.28/"
+data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-02/2015-09-02 20.10.46/"
 
-data_names <- c("B2B_edssprog", 
-                "B2B_relapse_fu_any",
-                "B2F_edssprog",
-                "B2F_relapse_fu_any",
-                "B2S_edssprog",
-                "B2S_relapse_fu_any",
-                "continue_edssprog",
-                "continue_relapse_fu_any",
-                "B2B_edssprog_or_relapse_fu",
-                "B2F_edssprog_or_relapse_fu",
-                "B2S_edssprog_or_relapse_fu",
-                "continue_edssprog_or_relapse_fu")
-
-# data_names <- c("B2B_edssprog_or_relapse_fu",
+# data_names <- c("B2B_edssprog", 
+#                 "B2B_relapse_fu_any",
+#                 "B2F_edssprog",
+#                 "B2F_relapse_fu_any",
+#                 "B2S_edssprog",
+#                 "B2S_relapse_fu_any",
+#                 "continue_edssprog",
+#                 "continue_relapse_fu_any",
+#                 "B2B_edssprog_or_relapse_fu",
 #                 "B2F_edssprog_or_relapse_fu",
 #                 "B2S_edssprog_or_relapse_fu",
 #                 "continue_edssprog_or_relapse_fu")
 
-# data_names <- c("continue_edssprog_or_relapse_fu")
+data_names <- c("B2B_edssprog", 
+                "B2B_relapse_fu_any_01",
+                "B2B_progrelapse",
+                "B2F_edssprog",
+                "B2F_relapse_fu_any_01",
+                "B2F_progrelapse",
+                "B2S_edssprog",
+                "B2S_edssconf3",
+                "B2S_relapse_fu_any_01",
+                "B2S_confrelapse",
+                "B2S_progrelapse",
+                "continue_edssprog",
+                "continue_edssconf3",
+                "continue_relapse_fu_any_01",
+                "continue_confrelapse",
+                "continue_progrelapse")
+
+# data_names <- c("continue_edssconf3")
 
 #
 
@@ -107,7 +119,9 @@ for (iDataSet in 1:length(data_names))
     dev.off()
     
     if (any(data_names[iDataSet] == 
-            c("continue_edssprog", "continue_relapse_fu_any", "continue_edssprog_or_relapse_fu")))
+            c("continue_edssprog", "continue_relapse_fu_any_01", 
+              "continue_edssconf3", "continue_confrelapse",
+              "continue_progrelapse")))
     {
       dayssup_name <- "precont_dayssup"
     } else
