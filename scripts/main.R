@@ -16,9 +16,9 @@ source("functions/getPredefinedFolds.R")
 # params
 
 
-alphaVals <- seq(0,1,0.1)
+alphaVals <- seq(0,1,1)
 # alphaVals <- c(1)
-log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=70)
+log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=2)
 lambda_seq <- exp(log_lambda_seq)
 validation_thresh <- 0.2
 
@@ -96,6 +96,7 @@ for (iDataSet in 1:length(data_names))
   lambda_all_folds_allAlphas <- matrix(data=0, nrow=kFoldsEval, ncol=length(alphaVals))
   colnames(lambda_all_folds_allAlphas) <- rep("",ncol(lambda_all_folds_allAlphas))
   rownames(lambda_all_folds_allAlphas) <- rep("",nrow(lambda_all_folds_allAlphas))
+  
   
   for (iFoldEval in 1:kFoldsEval) 
   {
@@ -254,6 +255,7 @@ for (iDataSet in 1:length(data_names))
   # finally compute the result metrics using every prediction
   
   auc_all_alphas <- matrix(data=0, nrow=1, ncol=length(alphaVals))
+  colnames(auc_all_alphas) <- rep("", length(alphaVals))
   for (iAlpha in 1:length(alphaVals))
   {
     pred <- prediction(predictions=preds_alldata_allAlphas[,iAlpha], labels=y)
