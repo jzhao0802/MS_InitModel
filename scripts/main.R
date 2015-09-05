@@ -51,7 +51,7 @@ data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-04/2015-09-04 16
 #                 "continue_confrelapse",
 #                 "continue_progrelapse")
 
-data_names <- c("B2B_edssconf3", "B2F_edssconf3")
+data_names <- c("B2B_edssconf3", "continue_progrelapse")
 
 #
 
@@ -225,6 +225,9 @@ for (iDataSet in 1:length(data_names))
       fit_eval <- glmnet(X_train_val, y_train_val, family="binomial", 
                           alpha=alphaVals[iAlpha],
                           weights=weight_vec_train_val, lambda=lambda_best)
+      
+      save(fit_eval, file=paste(resultDir, "model_", data_names[iDataSet], "alpha", 
+                              alphaVals[iAlpha], "_fold_", iFold, ".RData", sep=""))
       
       preds_probs_eval <- predict(fit_eval, newx = X_test, type="response")
       
