@@ -22,7 +22,7 @@ source("functions/getPredefinedFolds.R")
 
 # alphaVals <- seq(0,1,0.1)
 alphaVals <- c(1)
-log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=3)
+log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=2)
 lambda_seq <- exp(log_lambda_seq)
 validation_thresh <- 0.2
 
@@ -51,7 +51,7 @@ data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-04/2015-09-04 16
 #                 "continue_confrelapse",
 #                 "continue_progrelapse")
 
-data_names <- c("B2B_edssconf3", "continue_edssconf3")
+data_names <- c("B2B_edssconf3", "B2F_edssconf3")
 
 #
 
@@ -87,9 +87,10 @@ for (iDataSet in 1:length(data_names))
   
   #
   
-  aucs_all_folds_allAlphas <- matrix(data=0, nrow=kFoldsEval, ncol=length(alphaVals))
-  colnames(aucs_all_folds_allAlphas) <- rep("",ncol(aucs_all_folds_allAlphas))
-  rownames(aucs_all_folds_allAlphas) <- rep("",nrow(aucs_all_folds_allAlphas))
+  preds_alldata_allAlphas <- matrix(data=-1.0, nrow=nrow(dataset), ncol=length(alphaVals))
+  # aucs_all_folds_allAlphas <- matrix(data=0, nrow=kFoldsEval, ncol=length(alphaVals))
+  colnames(preds_alldata_allAlphas) <- rep("",ncol(preds_alldata_allAlphas))
+  # rownames(aucs_all_folds_allAlphas) <- rep("",nrow(aucs_all_folds_allAlphas))
   lambda_all_folds_allAlphas <- matrix(data=0, nrow=kFoldsEval, ncol=length(alphaVals))
   colnames(lambda_all_folds_allAlphas) <- rep("",ncol(lambda_all_folds_allAlphas))
   rownames(lambda_all_folds_allAlphas) <- rep("",nrow(lambda_all_folds_allAlphas))
@@ -136,7 +137,6 @@ for (iDataSet in 1:length(data_names))
 #            col="red", pch=20)
 #     dev.off()
     
-    rownames(aucs_all_folds_allAlphas)[iFoldEval] <- paste("fold_",iFoldEval,sep="")
     rownames(lambda_all_folds_allAlphas)[iFoldEval] <- paste("fold_",iFoldEval,sep="")
     
     # compute weights
@@ -170,13 +170,13 @@ for (iDataSet in 1:length(data_names))
           if (grepl("continue", data_names[iDataSet])) # only pick one fold
           {
             fold_id_val <- fold_ids_train_val[iFoldVal]
-            X_val <- X_train_val[which[fold_id_vec_train_val == fold_id_val],]
-            X_train <- X_train_val[-which[fold_id_vec_train_val == fold_id_val],]
-            y_val <- y_train_val[which[fold_id_vec_train_val == fold_id_val]]
-            y_train <- y_train_val[-which[fold_id_vec_train_val == fold_id_val]]
+            X_val <- X_train_val[which(fold_id_vec_train_val == fold_id_val),]
+            X_train <- X_train_val[-which(fold_id_vec_train_val == fold_id_val),]
+            y_val <- y_train_val[which(fold_id_vec_train_val == fold_id_val)]
+            y_train <- y_train_val[-which(fold_id_vec_train_val == fold_id_val)]
             
             weight_vec_train <- 
-              weight_vec_train_val[-which[fold_id_vec_train_val == fold_id_val]]
+              weight_vec_train_val[-which(fold_id_vec_train_val == fold_id_val)]
             
             
           } else 
@@ -228,32 +228,52 @@ for (iDataSet in 1:length(data_names))
       
       preds_probs_eval <- predict(fit_eval, newx = X_test, type="response")
       
-      # result metrics
-      pred <- prediction(predictions=preds_probs_eval, labels=y_test)
-      perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-      png(filename=paste(resultDir, data_names[iDataSet], "_roc_alpha", 
-                         alphaVals[iAlpha], "_fold_", iFoldEval, ".png", sep=""))
-      plot(perf, col=rainbow(10))
-      dev.off()
       
-      roc_values_eval <- roc(response=as.vector(y_test), 
-                             predictor=as.vector(preds_probs_eval))
-      aucs_all_folds_allAlphas[iFoldEval, iAlpha] = roc_values_eval$auc
-      colnames(aucs_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+      
+      preds_alldata_allAlphas[test_ids, iAlpha] <- preds_probs_eval
+      
+#       roc_values_eval <- roc(response=as.vector(y_test), 
+#                              predictor=as.vector(preds_probs_eval))
+#       aucs_all_folds_allAlphas[iFoldEval, iAlpha] = roc_values_eval$auc
+      colnames(preds_alldata_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
       lambda_all_folds_allAlphas[iFoldEval, iAlpha] = lambda_best
       colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
     }
   }
-   
   
-  write.table(aucs_all_folds_allAlphas, sep=",", 
-              file=paste(resultDir,data_names[iDataSet],"_aucs.csv", sep=""), col.names=NA)
+  
+  # finally compute the result metrics using every prediction
+  
+  auc_all_alphas <- matrix(data=0, nrow=1, ncol=length(alphaVals))
+  for (iAlpha in 1:length(alphaVals))
+  {
+    pred <- prediction(predictions=preds_alldata_allAlphas[,iAlpha], labels=y)
+    perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+    png(filename=paste(resultDir, data_names[iDataSet], "_roc_alpha", 
+                       alphaVals[iAlpha], ".png", sep=""))
+    plot(perf, col=rainbow(10))
+    dev.off()
+    
+    roc_values_eval <- roc(response=as.vector(y), 
+                           predictor=as.vector(preds_alldata_allAlphas[,iAlpha]))
+    auc_all_alphas[iAlpha] = roc_values_eval$auc
+    colnames(auc_all_alphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+  }
+  
+  write.table(auc_all_alphas, sep=",", 
+              file=paste(resultDir,data_names[iDataSet],"_aucs.csv", sep=""), row.names=FALSE)
+  
+  write.table(preds_alldata_allAlphas, sep=",", 
+              file=paste(resultDir,data_names[iDataSet],"_preds.csv", sep=""), row.names=FALSE)
+  
+#   write.table(aucs_all_folds_allAlphas, sep=",", 
+#               file=paste(resultDir,data_names[iDataSet],"_aucs.csv", sep=""), col.names=NA)
   write.table(lambda_all_folds_allAlphas, sep=",", 
               file=paste(resultDir,data_names[iDataSet],"_lambdas.csv", sep=""), col.names=NA)
   
   if (iDataSet == 1)
-    writeLines(paste("", paste(colnames(aucs_all_folds_allAlphas),collapse=","),sep=","), fileAvAUCs)
-  writeLines(paste(data_names[iDataSet], paste(colMeans(aucs_all_folds_allAlphas),collapse=","), sep=","), fileAvAUCs)
+    writeLines(paste("", paste(colnames(auc_all_alphas),collapse=","),sep=","), fileAvAUCs)
+  writeLines(paste(data_names[iDataSet], paste(auc_all_alphas,collapse=","), sep=","), fileAvAUCs)
 }
 
 close(fileAvAUCs)
