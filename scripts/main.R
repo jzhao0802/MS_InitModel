@@ -24,8 +24,7 @@ validation_thresh <- 0.2
 
 #
 
-cl <- makeCluster(detectCores() - 1)
-registerDoParallel(cl, cores = detectCores() - 1)
+
 
 # 
 
@@ -70,6 +69,9 @@ source("functions/manualStratify.R")
 
 for (iDataSet in 1:length(data_names))
 {
+  cl <- makeCluster(detectCores() - 1)
+  registerDoParallel(cl, cores = detectCores() - 1)
+  
   cat(paste(data_names[iDataSet], "...\n", sep=""))
   cat("Fold ")
   
@@ -97,8 +99,21 @@ for (iDataSet in 1:length(data_names))
   colnames(lambda_all_folds_allAlphas) <- rep("",ncol(lambda_all_folds_allAlphas))
   rownames(lambda_all_folds_allAlphas) <- rep("",nrow(lambda_all_folds_allAlphas))
   
+  # fill the names
+  for (iAlpha in 1:length(alphaVals))
+  {
+    colnames(preds_alldata_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+    colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+  }
+  for (iFoldEval in 1:kFoldsEval)
+  {
+    rownames(lambda_all_folds_allAlphas)[iFoldEval] <- paste("fold_",iFoldEval,sep="")
+  }
   
-  for (iFoldEval in 1:kFoldsEval) 
+  
+  par_results <- foreach (iFoldEval = 1:kFoldsEval, 
+                          .combine=rbind,
+                          .packages=c("glmnet","pROC","ROCR")) %dopar%
   {
     cat(iFoldEval, ", ")
     test_ids <- folds[[iFoldEval]]
@@ -110,16 +125,13 @@ for (iDataSet in 1:length(data_names))
     fold_id_vec_train_val <- dataset$fold_id[-test_ids]
     
     
-#     # plot the ordinal variables
-#     png(filename=paste(resultDir, data_names[iDataSet], 
-#                        "age_edss_fold_", iFold, ".png", sep=""))
-#     plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
-#          X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="baseline_edss_score")],
-#          col="blue", pch=5)
-#     points(X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="age")], 
-#            X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="baseline_edss_score")],
-#            col="red", pch=20)
-#     dev.off()
+    # preds
+    
+    preds_1fold_eval_allalphas <- 
+      matrix(data=-1.0, nrow=length(test_ids), ncol=length(alphaVals))
+    lambda_1fold_eval_allalphas <- rep(data=-1.0, length(test_ids))
+
+    
     
     if (any(data_names[iDataSet] == 
             c("continue_edssprog", "continue_relapse_fu_any_01", 
@@ -131,18 +143,7 @@ for (iDataSet in 1:length(data_names))
     {
       dayssup_name <- "switch_rx_dayssup"
     }
-#     png(filename=paste(resultDir, data_names[iDataSet], "age_dayssup_fold_", 
-#                        iFold, ".png", sep=""))
-#     plot(X_train_val[which(y_train_val==0),which(colnames(X_train_val)=="age")], 
-#          X_train_val[which(y_train_val==0),which(colnames(X_train_val)==dayssup_name)],
-#          col="blue", pch=5)
-#     points(X_train_val[which(y_train_val==1),which(colnames(X_train_val)=="age")], 
-#            X_train_val[which(y_train_val==1),which(colnames(X_train_val)==dayssup_name)],
-#            col="red", pch=20)
-#     dev.off()
-    
-    rownames(lambda_all_folds_allAlphas)[iFoldEval] <- paste("fold_",iFoldEval,sep="")
-    
+
     # compute weights
     
     weight_vec_train_val <- computeWeights(y_train_val)
@@ -155,11 +156,9 @@ for (iDataSet in 1:length(data_names))
       
       # manual cross-validation
       
-      # auc_all_lambdas <-  rep(0, length(lambda_seq))
+      auc_all_lambdas <-  rep(0, length(lambda_seq))
       
-      auc_all_lambdas <- foreach (iLambda = 1:length(lambda_seq), 
-                                  .combine=c,
-                                  .packages=c("glmnet","pROC","ROCR")) %dopar%
+      for (iLambda in 1:length(lambda_seq)) 
       {
         auc_all_val_folds_one_lambda <- rep(0, kFoldsEval-1)
         
@@ -239,17 +238,60 @@ for (iDataSet in 1:length(data_names))
       
       
       
-      preds_alldata_allAlphas[test_ids, iAlpha] <- preds_probs_eval
+      # preds_alldata_allAlphas[test_ids, iAlpha] <- preds_probs_eval
+      preds_1fold_eval_allalphas[, iAlpha] <- preds_probs_eval
+      
+      lambda_1fold_eval_allalphas[iAlpha] <- lambda_best
       
 #       roc_values_eval <- roc(response=as.vector(y_test), 
 #                              predictor=as.vector(preds_probs_eval))
 #       aucs_all_folds_allAlphas[iFoldEval, iAlpha] = roc_values_eval$auc
-      colnames(preds_alldata_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-      lambda_all_folds_allAlphas[iFoldEval, iAlpha] = lambda_best
-      colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+      # colnames(preds_alldata_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+      # lambda_all_folds_allAlphas[iFoldEval, iAlpha] = lambda_best
+      # colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
+      
+      
+      
     }
+    
+    # upper left: test_ids
+    # upper right: preds all alphas
+    # lower left: fold_id (useless)
+    # lower right: lambdas all alphas
+    result_1fold_eval <- rbind(preds_1fold_eval_allalphas, lambda_1fold_eval_allalphas)
+    result_1fold_eval <- cbind(c(test_ids,iFoldEval), result_1fold_eval)
+    
+#     filename_tmp <- paste(resultDir,data_names[iDataSet],"_tmp_fold_", iFoldEval, ".csv", sep="")
+#     file_tmp <- file(filename_tmp)
+#     write.table(result_1fold_eval, sep=",", 
+#                 file=file_tmp, 
+#                 col.names=FALSE, row.names=FALSE)
+#     close(file_tmp)
+    
+    # return (result_1fold_eval)
+    return (c(1,2))
   }
   cat("\n")
+  
+  stopCluster(cl)
+  
+  # parse par_results to fill in the resultant matrices
+  
+  for (iFoldEval in 1:kFoldsEval)
+  {
+    results_1fold <- par_results[[iFoldEval]]
+    # upper left: test_ids
+    # upper right: preds all alphas
+    # lower left: fold_id (useless)
+    # lower right: lambdas all alphas
+    test_ids <- results_1fold[1:(nrow(results_1fold)-1), 1]
+    preds <- results_1fold[1:(nrow(results_1fold)-1), 2:ncol(results_1fold)]
+    lambdas <- results_1fold[nrow(results_1fold), 2:ncol(results_1fold)]
+    
+    preds_alldata_allAlphas[test_ids, ] <- preds
+    lambda_all_folds_allAlphas[iFoldEval,] <- lambdas
+  }
+  
   
   
   # finally compute the result metrics using every prediction
@@ -289,7 +331,7 @@ for (iDataSet in 1:length(data_names))
 
 close(fileAvAUCs)
 
-stopCluster(cl)
+
 
 runtime <- proc.time() - ptm
 
