@@ -10,21 +10,22 @@ source("functions/getPredefinedFolds.R")
 
 #
 
-
-
-#
-
 # cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl, cores = detectCores() - 1)
 
 # params
 
 
-# alphaVals <- seq(0,1,0.1)
-alphaVals <- c(1)
-log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=2)
+alphaVals <- seq(0,1,0.1)
+# alphaVals <- c(1)
+log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=70)
 lambda_seq <- exp(log_lambda_seq)
 validation_thresh <- 0.2
+
+#
+
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl, cores = detectCores() - 1)
 
 # 
 
@@ -70,6 +71,7 @@ source("functions/manualStratify.R")
 for (iDataSet in 1:length(data_names))
 {
   cat(paste(data_names[iDataSet], "...\n", sep=""))
+  cat("Fold ")
   
   dataset <- read.csv(paste(data_dir, data_names[iDataSet],".csv", sep=""), 
                       header=TRUE, sep=",")
@@ -95,8 +97,9 @@ for (iDataSet in 1:length(data_names))
   colnames(lambda_all_folds_allAlphas) <- rep("",ncol(lambda_all_folds_allAlphas))
   rownames(lambda_all_folds_allAlphas) <- rep("",nrow(lambda_all_folds_allAlphas))
   
-  for (iFoldEval in 1:kFoldsEval)
+  for (iFoldEval in 1:kFoldsEval) 
   {
+    cat(iFoldEval, ", ")
     test_ids <- folds[[iFoldEval]]
     X_test <- X[test_ids, ]
     y_test <- y[test_ids]
@@ -145,15 +148,17 @@ for (iDataSet in 1:length(data_names))
     
     for (iAlpha in 1:length(alphaVals))
     {
-      cat("Fold ", iFoldEval, "alpha ", alphaVals[iAlpha], "\n")
+      # cat("Fold ", iFoldEval, "alpha ", alphaVals[iAlpha], "\n")
       
       # train
       
       # manual cross-validation
       
-      auc_all_lambdas <-  rep(0, length(lambda_seq))
+      # auc_all_lambdas <-  rep(0, length(lambda_seq))
       
-      for (iLambda in 1:length(lambda_seq))
+      auc_all_lambdas <- foreach (iLambda = 1:length(lambda_seq), 
+                                  .combine=c,
+                                  .packages=c("glmnet","pROC","ROCR")) %dopar%
       {
         auc_all_val_folds_one_lambda <- rep(0, kFoldsEval-1)
         
@@ -207,14 +212,14 @@ for (iDataSet in 1:length(data_names))
                               weights=weight_vec_train, lambda=lambda_seq[iLambda])
           
           preds_probs_local <- predict(fit_local, newx = X_val, type="response",
-                                       s="lambda.min")
+                                       s=lambda_seq[iLambda])
           
           roc_values_local <- roc(response=as.vector(y_val), 
                                   predictor=as.vector(preds_probs_local))
           auc_all_val_folds_one_lambda[iFoldVal] = roc_values_local$auc
         }
         
-        auc_all_lambdas[iLambda] <- mean(auc_all_val_folds_one_lambda)
+        return (mean(auc_all_val_folds_one_lambda))
       }
       
       iLambda_best <- which.max(auc_all_lambdas)
@@ -227,7 +232,7 @@ for (iDataSet in 1:length(data_names))
                           weights=weight_vec_train_val, lambda=lambda_best)
       
       save(fit_eval, file=paste(resultDir, "model_", data_names[iDataSet], "alpha", 
-                              alphaVals[iAlpha], "_fold_", iFold, ".RData", sep=""))
+                              alphaVals[iAlpha], "_fold_", iFoldEval, ".RData", sep=""))
       
       preds_probs_eval <- predict(fit_eval, newx = X_test, type="response")
       
@@ -243,6 +248,7 @@ for (iDataSet in 1:length(data_names))
       colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
     }
   }
+  cat("\n")
   
   
   # finally compute the result metrics using every prediction
@@ -280,6 +286,8 @@ for (iDataSet in 1:length(data_names))
 }
 
 close(fileAvAUCs)
+
+stopCluster(cl)
 
 runtime <- proc.time() - ptm
 
