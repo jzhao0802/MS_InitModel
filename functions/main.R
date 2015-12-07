@@ -1,19 +1,14 @@
-rm(list=ls())
-
 library(glmnet)
 library(pROC)
 library(ROCR)
-library(caret)
 library(doParallel)
 library(compiler)
 
+
 #
 
-source("functions/getPredefinedFolds.R")
 source("functions/computeWeights.R")
 source("functions/manualStratify.R")
-source("functions/addInteractions.R")
-source("functions/categoriseOrdinal.R")
 source("functions/manualCV.R")
 
 getRanking <- cmpfun(function(coefficients)
@@ -34,46 +29,34 @@ AddSuffix2SetOfStrings <- cmpfun(function(suffix, str_vec)
 
 #
 
-main <- cmpfun(function()
+main <- cmpfun(function(arglist)
 {
-  bParallel <- FALSE
+  # input arguments
+  bParallel <- arglist$bParallel
+  kFoldsEval <- arglist$kFoldsEval
+  kFoldsVal <- arglist$kFoldsVal
+  alphaVals <- arglist$alphaVals
+  log_lambda_seq <- arglist$log_lambda_seq
+  bClassWeights <- arglist$bClassWeights
+  n_repeats <- arglist$n_repeats
   
+  n_alphas <- length(alphaVals)
+  lambda_seq <- exp(log_lambda_seq)
+  
+  data_dir <- arglist$data_dir
+  cohort_names <- arglist$cohort_names
+  outcome_names <- arglist$outcome_names
+  
+  # 
   if (bParallel)
   {
     cl <- makeCluster(detectCores() - 1)
     registerDoParallel(cl, cores = detectCores() - 1)
   }
   
-  # params
-  
-  kFoldsEval <- 3
-  kFoldsVal <- 3
-  # alphaVals <- seq(0,1,1)
-  alphaVals <- c(0)
-  n_alphas <- length(alphaVals)
-  log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=3)
-  lambda_seq <- exp(log_lambda_seq)
-  
-  bClassWeights <- 0
-  
-  n_repeats <- 1
-  
   # 
   
-  
-  
   ptm <- proc.time()
-  
-  # data
-  
-  data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-10-06/2015-10-06 17.22.37/"
-  
-  # cohort_names <- c("continue", "B2B", "B2F", "B2S")
-  # outcome_names <- c("edssprog", "edssconf3", "relapse_fu_any_01", 
-  #                    "confrelapse", "progrelapse")
-  
-  cohort_names <- c("continue", "B2F")
-  outcome_names <- c("relapse_fu_any_01")  
   
   timeStamp <- as.character(Sys.time())
   timeStamp <- gsub(":", ".", timeStamp)  # replace ":" by "."
@@ -92,14 +75,14 @@ main <- cmpfun(function()
     fileAvAUCs_test <- file(paste(resultDir_thisrepeat, "AvAUCs_test.csv", sep=""), "w")
     fileAvAUCs_train_newdomain <- file(paste(resultDir_thisrepeat, "AvAUCs_train_newdomain.csv", sep=""), "w")
     fileAvAUCs_train_olddomain <- file(paste(resultDir_thisrepeat, "AvAUCs_train_olddomain.csv", sep=""), "w")
-    
+
     i_study = 1
     
     for (i_coh in 1:length(cohort_names))
     {
       if (cohort_names[i_coh] == "continue")
         next
-      
+
       for (i_out in 1:length(outcome_names))
       {
         if (((cohort_names[i_coh] == "B2B") | (cohort_names[i_coh] == "B2F")) & 
@@ -446,8 +429,6 @@ main <- cmpfun(function()
         
         i_study = i_study + 1
       }
-      
-      
     }
     
     close(fileAvAUCs_train_newdomain)
@@ -467,7 +448,3 @@ main <- cmpfun(function()
     stopCluster(cl)
   }
 }, options=list(optimize=3))
-
-# the main script
-
-main()
