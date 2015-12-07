@@ -5,337 +5,469 @@ library(pROC)
 library(ROCR)
 library(caret)
 library(doParallel)
+library(compiler)
+
+#
 
 source("functions/getPredefinedFolds.R")
-
-#
-
-# cl <- makeCluster(detectCores() - 1)
-# registerDoParallel(cl, cores = detectCores() - 1)
-
-# params
-
-
-alphaVals <- seq(0,1,1)
-# alphaVals <- c(1)
-log_lambda_seq <- seq(log(1e-3),log(1e2),length.out=2)
-lambda_seq <- exp(log_lambda_seq)
-validation_thresh <- 0.2
-
-#
-
-
-
-# 
-
-ptm <- proc.time()
-
-# data
-
-data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-09-04/2015-09-04 16.46.30/"
-
-# data_names <- c("B2B_edssprog", 
-#                 "B2B_relapse_fu_any_01",
-#                 "B2B_progrelapse",
-#                 "B2F_edssprog",
-#                 "B2F_relapse_fu_any_01",
-#                 "B2F_progrelapse",
-#                 "B2S_edssprog",
-#                 "B2S_edssconf3",
-#                 "B2S_relapse_fu_any_01",
-#                 "B2S_confrelapse",
-#                 "B2S_progrelapse",
-#                 "continue_edssprog",
-#                 "continue_edssconf3",
-#                 "continue_relapse_fu_any_01",
-#                 "continue_confrelapse",
-#                 "continue_progrelapse")
-
-data_names <- c("B2B_edssconf3", "continue_progrelapse")
-
-#
-
-timeStamp <- as.character(Sys.time())
-timeStamp <- gsub(":", ".", timeStamp)  # replace ":" by "."
-resultDir <- paste("./Results/", timeStamp, "/", sep = '')
-dir.create(resultDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
-
-
-fileAvAUCs <- file(paste(resultDir, "AvAUCs.csv", sep=""), "w")
-
-
 source("functions/computeWeights.R")
 source("functions/manualStratify.R")
+source("functions/addInteractions.R")
+source("functions/categoriseOrdinal.R")
+source("functions/manualCV.R")
 
-for (iDataSet in 1:length(data_names))
+getRanking <- cmpfun(function(coefficients)
 {
-  cl <- makeCluster(detectCores() - 1)
-  registerDoParallel(cl, cores = detectCores() - 1)
+  winners <- sort.int(abs(coefficients), decreasing=TRUE, index.return=TRUE)$ix
+  ranking <- rep(-1, length(winners))
+  ranking[winners] <- 1:length(winners)
+  ranking[which(coefficients == 0)] <- length(winners)
   
-  cat(paste(data_names[iDataSet], "...\n", sep=""))
-  cat("Fold ")
+  return (ranking)
+}, options=list(optimize=3))
+
+AddSuffix2SetOfStrings <- cmpfun(function(suffix, str_vec)
+{
+  str_vec <- lapply(str_vec, paste, arg1="_", arg2=suffix, sep="")
+  return (str_vec)
+}, options=list(optimize=3))
+
+#
+
+main <- cmpfun(function()
+{
+  bParallel <- FALSE
   
-  dataset <- read.csv(paste(data_dir, data_names[iDataSet],".csv", sep=""), 
-                      header=TRUE, sep=",")
-  
-  X <- data.matrix(dataset[, 2:(ncol(dataset)-1)])
-  y <- dataset[, 1]
-  
-  # stratification for evaluation7
-  
-  folds <- getPredefinedFolds(dataset[,ncol(dataset)])
-  kFoldsEval <- max(dataset$fold_id)
-  # kFoldsVal <- length(folds) - 1
-  # folds <- manualStratify(y, kFoldsEval)
-  # folds <- createFolds(y, k=kFolds, returnTrain=TRUE)
-  
-  #
-  
-  preds_alldata_allAlphas <- matrix(data=-1.0, nrow=nrow(dataset), ncol=length(alphaVals))
-  # aucs_all_folds_allAlphas <- matrix(data=0, nrow=kFoldsEval, ncol=length(alphaVals))
-  colnames(preds_alldata_allAlphas) <- rep("",ncol(preds_alldata_allAlphas))
-  # rownames(aucs_all_folds_allAlphas) <- rep("",nrow(aucs_all_folds_allAlphas))
-  lambda_all_folds_allAlphas <- matrix(data=0, nrow=kFoldsEval, ncol=length(alphaVals))
-  colnames(lambda_all_folds_allAlphas) <- rep("",ncol(lambda_all_folds_allAlphas))
-  rownames(lambda_all_folds_allAlphas) <- rep("",nrow(lambda_all_folds_allAlphas))
-  
-  # fill the names
-  for (iAlpha in 1:length(alphaVals))
+  if (bParallel)
   {
-    colnames(preds_alldata_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-    colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-  }
-  for (iFoldEval in 1:kFoldsEval)
-  {
-    rownames(lambda_all_folds_allAlphas)[iFoldEval] <- paste("fold_",iFoldEval,sep="")
+    cl <- makeCluster(detectCores() - 1)
+    registerDoParallel(cl, cores = detectCores() - 1)
   }
   
+  # params
   
-  par_results <- foreach (iFoldEval = 1:kFoldsEval, 
-                          .combine=rbind,
-                          .packages=c("glmnet","pROC","ROCR")) %dopar%
+  kFoldsEval <- 3
+  kFoldsVal <- 3
+  # alphaVals <- seq(0,1,1)
+  alphaVals <- c(0)
+  n_alphas <- length(alphaVals)
+  log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=3)
+  lambda_seq <- exp(log_lambda_seq)
+  
+  bClassWeights <- 0
+  
+  n_repeats <- 1
+  
+  # 
+  
+  
+  
+  ptm <- proc.time()
+  
+  # data
+  
+  data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-10-06/2015-10-06 17.22.37/"
+  
+  # cohort_names <- c("continue", "B2B", "B2F", "B2S")
+  # outcome_names <- c("edssprog", "edssconf3", "relapse_fu_any_01", 
+  #                    "confrelapse", "progrelapse")
+  
+  cohort_names <- c("continue", "B2F")
+  outcome_names <- c("relapse_fu_any_01")  
+  
+  timeStamp <- as.character(Sys.time())
+  timeStamp <- gsub(":", ".", timeStamp)  # replace ":" by "."
+  resultDir <- paste("./Results/", timeStamp, "/", sep = '')
+  dir.create(resultDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
+  
+  
+  
+  
+  
+  for (i_repeat in 1:n_repeats)
   {
-    cat(iFoldEval, ", ")
-    test_ids <- folds[[iFoldEval]]
-    X_test <- X[test_ids, ]
-    y_test <- y[test_ids]
-    fold_id_vec_test <- dataset$fold_id[test_ids]
-    X_train_val <- X[-test_ids,]
-    y_train_val <- y[-test_ids]
-    fold_id_vec_train_val <- dataset$fold_id[-test_ids]
+    resultDir_thisrepeat <- paste(resultDir, i_repeat, "/", sep = '')
+    dir.create(resultDir_thisrepeat, showWarnings = TRUE, recursive = TRUE, mode = "0777")
     
+    fileAvAUCs_test <- file(paste(resultDir_thisrepeat, "AvAUCs_test.csv", sep=""), "w")
+    fileAvAUCs_train_newdomain <- file(paste(resultDir_thisrepeat, "AvAUCs_train_newdomain.csv", sep=""), "w")
+    fileAvAUCs_train_olddomain <- file(paste(resultDir_thisrepeat, "AvAUCs_train_olddomain.csv", sep=""), "w")
     
-    # preds
+    i_study = 1
     
-    preds_1fold_eval_allalphas <- 
-      matrix(data=-1.0, nrow=length(test_ids), ncol=length(alphaVals))
-    lambda_1fold_eval_allalphas <- rep(data=-1.0, length(test_ids))
-
-    
-    
-    if (any(data_names[iDataSet] == 
-            c("continue_edssprog", "continue_relapse_fu_any_01", 
-              "continue_edssconf3", "continue_confrelapse",
-              "continue_progrelapse")))
+    for (i_coh in 1:length(cohort_names))
     {
-      dayssup_name <- "precont_dayssup"
-    } else
-    {
-      dayssup_name <- "switch_rx_dayssup"
-    }
-
-    # compute weights
-    
-    weight_vec_train_val <- computeWeights(y_train_val)
-    
-    for (iAlpha in 1:length(alphaVals))
-    {
-      # cat("Fold ", iFoldEval, "alpha ", alphaVals[iAlpha], "\n")
+      if (cohort_names[i_coh] == "continue")
+        next
       
-      # train
-      
-      # manual cross-validation
-      
-      auc_all_lambdas <-  rep(0, length(lambda_seq))
-      
-      for (iLambda in 1:length(lambda_seq)) 
+      for (i_out in 1:length(outcome_names))
       {
-        auc_all_val_folds_one_lambda <- rep(0, kFoldsEval-1)
+        if (((cohort_names[i_coh] == "B2B") | (cohort_names[i_coh] == "B2F")) & 
+            ((outcome_names[i_out] == "edssconf3") | (outcome_names[i_out] == "confrelapse")))
+          next
         
-        for (iFoldVal in 1:(kFoldsEval-1))
+        study_name <- paste(cohort_names[i_coh], "_", outcome_names[i_out], sep="")
+        cat(paste(study_name, ", fold ", sep=""))
+        
+        # data from the new domain
+        dataset_newdomain <- read.csv(paste(data_dir, study_name,"_data_for_model.csv", sep=""), 
+                                      header=TRUE, sep=",", check.names=FALSE)
+        # the first column is index
+        dataset_newdomain[,1] <- NULL
+        
+        y_newdomain <- dataset_newdomain[, 1]
+        X_newdomain <- dataset_newdomain[, 2:ncol(dataset_newdomain)]
+        
+        # remove vars in the new domain that have constant values
+        
+        sds_vars_newdomain <- apply(X_newdomain, 2, sd)
+        const_vars_newdomain <- colnames(X_newdomain)[which(sds_vars_newdomain == 0)]
+        X_newdomain <- X_newdomain[, !(colnames(X_newdomain) %in% const_vars_newdomain)]
+        
+        # one more set of predictors indiciting the continuation/switch/escalation
+        # 3 Booleans corresponding to B2B, B2F and B2S. It's continue if all zeros. 
+        
+        cohort_vars <- matrix(data=0, nrow=length(y_newdomain), ncol=3)
+        if (cohort_names == "B2B")
+          cohort_vars[,1] <- 1
+        else if (cohort_names == "B2F")
+          cohort_vars[,2] <- 1
+        else
+          cohort_vars[,3] <- 1
+        colnames(cohort_vars) <- c("B2B", "B2F", "B2S")
+        
+        X_newdomain <- cbind(X_newdomain, cohort_vars)
+        
+        # data from the old domain
+        dataset_olddomain <- read.csv(paste(data_dir, "continue_", outcome_names[i_out],"_data_for_model.csv", sep=""), 
+                                      header=TRUE, sep=",", check.names=FALSE)
+        # the first column is index
+        dataset_olddomain[,1] <- NULL
+        
+        y_olddomain <- dataset_olddomain[, 1]
+        X_olddomain <- dataset_olddomain[, 2:ncol(dataset_olddomain)]
+        
+        # also has the set of Booleans indicating the cohort, but all zeros
+        X_olddomain <- cbind(X_olddomain, matrix(data=0, nrow=length(y_olddomain), ncol=3))
+        colnames(X_olddomain)[(ncol(X_olddomain)-2):ncol(X_olddomain)] <- c("B2B", "B2F", "B2S")
+        
+        # merge the two domains: [intersect, old, new]
+        
+        org_varnames_newdomain <- colnames(X_newdomain)
+        org_varnames_olddomain <- colnames(X_olddomain)
+        varnames_intersect <- intersect(colnames(X_newdomain), colnames(X_olddomain))
+        n_intersect_vars <- length(varnames_intersect)
+        n_olddomain_vars <- ncol(X_olddomain)
+        n_newdomain_vars <- ncol(X_newdomain)
+        
+        X_newdomain <- cbind(X_newdomain[, varnames_intersect], 
+                             matrix(data=0, nrow=length(y_newdomain), ncol=n_olddomain_vars),
+                             X_newdomain)
+        colnames(X_newdomain)[1:n_intersect_vars] <- 
+          AddSuffix2SetOfStrings("intersect", varnames_intersect)
+        colnames(X_newdomain)[(n_intersect_vars+1):(n_intersect_vars+n_olddomain_vars)] <- 
+          AddSuffix2SetOfStrings("olddomain", org_varnames_olddomain)
+        colnames(X_newdomain)[(n_intersect_vars+n_olddomain_vars+1):ncol(X_newdomain)] <- 
+          AddSuffix2SetOfStrings("newdomain", org_varnames_newdomain)
+        
+        X_newdomain <- data.matrix(X_newdomain)
+        
+        X_olddomain <- cbind(X_olddomain[, varnames_intersect],
+                             X_olddomain, 
+                             matrix(data=0, nrow=length(y_olddomain), ncol=n_newdomain_vars))
+        colnames(X_olddomain)[1:n_intersect_vars] <- 
+          AddSuffix2SetOfStrings("intersect", varnames_intersect)
+        colnames(X_olddomain)[(n_intersect_vars+1):(n_intersect_vars+n_olddomain_vars)] <- 
+          AddSuffix2SetOfStrings("olddomain", org_varnames_olddomain)
+        colnames(X_olddomain)[(n_intersect_vars+n_olddomain_vars+1):ncol(X_olddomain)] <- 
+          AddSuffix2SetOfStrings("newdomain", org_varnames_newdomain)
+        
+        X_olddomain <- data.matrix(X_olddomain)
+        
+        
+        #   # standardise
+        #   col_ids_2_check <- which(apply(X, 2, sd) != 0)
+        #   if (any(apply(X[,col_ids_2_check], 2, sd) != 1) 
+        #       | any(apply(X[,col_ids_2_check], 2, mean) != 0)) {
+        #     X[,col_ids_2_check] <- scale(X[,col_ids_2_check])
+        #   } 
+        
+        n_data_newdomain <- length(y_newdomain)
+        
+        
+        # stratification for evaluation
+        
+        folds <- manualStratify(y_newdomain, kFoldsEval)
+        # folds <- stratifySmallSample(y_newdomain, kFoldsEval)
+        #     for (i_fold in 1:kFoldsEval)
+        #     {
+        #       retain_ids <- folds[[i_fold]]
+        #       y_retain <- y_newdomain[retain_ids]
+        #       y_thisfold <- y_newdomain[-retain_ids]
+        #       cat("fold", i_fold, ":")
+        #       cat("nPos", sum(y_thisfold), "; nNeg: ", length(y_thisfold)-sum(y_thisfold))
+        #       cat("\n")
+        #     }
+        
+        #
+        # containers 
+        
+        predprobs_alldata <- matrix(data=-1, nrow=n_data_newdomain, ncol=1)
+        
+        auc_train_allfolds_olddomain <- 
+          matrix(data=-1, nrow=kFoldsEval, ncol=1)
+        
+        auc_train_allfolds_newdomain <- 
+          matrix(data=-1, nrow=kFoldsEval, ncol=1)
+        
+        params_allfolds <- matrix(data=-1, nrow=kFoldsEval, ncol=2)
+        colnames(params_allfolds) <- c("alpha","lambda")
+        rownames(params_allfolds) <- rep("", nrow(params_allfolds))
+        
+        # variable importance rankings
+        ranks_allalphas_folds <- matrix(data=-1, nrow=ncol(X_newdomain), ncol=n_alphas*kFoldsEval)
+        colnames(ranks_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
+        rownames(ranks_allalphas_folds) <- colnames(X_newdomain)
+        
+        coefs_allalphas_folds <- matrix(data=-1, nrow=ncol(X_newdomain), ncol=n_alphas*kFoldsEval)
+        colnames(coefs_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
+        rownames(coefs_allalphas_folds) <- colnames(X_newdomain)
+        
+        
+        
+        for (iFold in 1:length(folds))
         {
-          fold_ids_train_val <- 1:kFoldsEval
-          fold_ids_train_val <- fold_ids_train_val[fold_ids_train_val != iFoldEval]
+          cat(paste(iFold, "..", sep=""))
           
+          train_val_ids <- folds[[iFold]]
+          test_ids <- which(!((1:n_data_newdomain) %in% train_val_ids))
+          X_train_val <- X_newdomain[train_val_ids,]
+          X_test <- X_newdomain[test_ids,]
+          y_train_val <- y_newdomain[train_val_ids]
+          y_test <- y_newdomain[test_ids]
           
-          # only pick data in X_train_val and y_train_val
-          
-          # two cases: switches and continue
-          
-          if (grepl("continue", data_names[iDataSet])) # only pick one fold
+          if (any(study_name == 
+                  c("continue_edssprog", "continue_relapse_fu_any_01", 
+                    "continue_confrelapse", "continue_edssconf3", 
+                    "continue_progrelapse")))
           {
-            fold_id_val <- fold_ids_train_val[iFoldVal]
-            X_val <- X_train_val[which(fold_id_vec_train_val == fold_id_val),]
-            X_train <- X_train_val[-which(fold_id_vec_train_val == fold_id_val),]
-            y_val <- y_train_val[which(fold_id_vec_train_val == fold_id_val)]
-            y_train <- y_train_val[-which(fold_id_vec_train_val == fold_id_val)]
-            
-            weight_vec_train <- 
-              weight_vec_train_val[-which(fold_id_vec_train_val == fold_id_val)]
-            
-            
-          } else 
+            dayssup_name <- "precont_dayssup"
+          } else
           {
-            # gather a number of folds so that validation has p percent of 
-            # the positives in train_val, where p = validation_thresh. 
-            # every fold has 1 positive
-            n_folds_train_val <- length(fold_ids_train_val)
-            n_folds_val <- ceiling(validation_thresh * n_folds_train_val)
-            fold_ids_val_ids <- iFoldVal:(iFoldVal+n_folds_val-1)
-            fold_ids_val_ids[which(fold_ids_val_ids > n_folds_train_val)] <- 
-              fold_ids_val_ids[which(fold_ids_val_ids > n_folds_train_val)] - n_folds_train_val
-            fold_ids_val <- fold_ids_train_val[fold_ids_val_ids]
-            
-            X_val <- X_train_val[fold_id_vec_train_val %in% fold_ids_val,]
-            X_train <- X_train_val[!(fold_id_vec_train_val %in% fold_ids_val),]
-            y_val <- y_train_val[fold_id_vec_train_val %in% fold_ids_val]
-            y_train <- y_train_val[!(fold_id_vec_train_val %in% fold_ids_val)]
-            
-            weight_vec_train <- 
-              weight_vec_train_val[!(fold_id_vec_train_val %in% fold_ids_val)]
+            dayssup_name <- "switch_rx_dayssup"
           }
           
-          # train and take down result for parameter selection
+          # compute weights
           
-          fit_local <- glmnet(X_train, y_train, family="binomial", 
-                              alpha=alphaVals[iAlpha],
-                              weights=weight_vec_train, lambda=lambda_seq[iLambda])
+          if (bClassWeights)
+            weight_vec <- computeWeights_2domains(y_train_val, y_olddomain)
+          else
+            weight_vec <- NULL
           
-          preds_probs_local <- predict(fit_local, newx = X_val, type="response",
-                                       s=lambda_seq[iLambda])
           
-          roc_values_local <- roc(response=as.vector(y_val), 
-                                  predictor=as.vector(preds_probs_local))
-          auc_all_val_folds_one_lambda[iFoldVal] = roc_values_local$auc
+          cv_results_allalphas <- list()
+          
+          for (iAlpha in 1:length(alphaVals))
+          {
+            cat("alpha: ", alphaVals[iAlpha],"\n")
+            # cat("Fold ", iFold, "alpha ", alphaVals[iAlpha], "\n")
+            
+            # train
+            
+            # set.seed(1011)
+            # alpha=1 (default), lasso; alpha=0, ridge
+            
+            # a list: list(lambda_best, max_auc)      
+            cv_results_allalphas[[iAlpha]] <- 
+              manualCV_lambdaonly_2Domains(X_train_val, X_olddomain, 
+                                           y_train_val, y_olddomain, 
+                                           alphaVals[iAlpha], 
+                                           weight_vec, bClassWeights, kFoldsVal, lambda_seq, bParallel)
+            
+            # take down the coefficients and ranking
+            
+            if (bClassWeights)
+            {
+              fit_glmnet <- glmnet(rbind(X_train_val, X_olddomain), c(y_train_val, y_olddomain), family="binomial", 
+                                   weights=weight_vec,
+                                   alpha=alphaVals[iAlpha], lambda=lambda_seq)
+            } else
+            {
+              fit_glmnet <- glmnet(rbind(X_train_val, X_olddomain), c(y_train_val, y_olddomain), family="binomial", 
+                                   alpha=alphaVals[iAlpha], lambda=lambda_seq)
+            }
+            
+            
+            coefficients_minlambda <- 
+              predict(fit_glmnet, s=cv_results_allalphas[[iAlpha]][[1]], type="coefficients")[2:(1+ncol(X_train_val))]
+            coefs_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- 
+              coefficients_minlambda
+            colnames(coefs_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
+              paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
+            
+            ranks_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- 
+              getRanking(coefficients_minlambda)
+            colnames(ranks_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
+              paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
+          }
+          
+          # find the best alpha
+          best_auc <- 0
+          for (iAlpha in 1:length(alphaVals))
+          {
+            if (cv_results_allalphas[[iAlpha]][[2]] > best_auc)
+            {
+              best_auc <- cv_results_allalphas[[iAlpha]][[2]]
+              best_alpha <- alphaVals[iAlpha]
+              best_lambda <- cv_results_allalphas[[iAlpha]][[1]]
+            }
+          }
+          
+          # use the selected lambda and alpha to fit the model
+          
+          if (bClassWeights)
+          {
+            fit_glmnet <- glmnet(rbind(X_train_val, X_olddomain), c(y_train_val, y_olddomain), family="binomial", 
+                                 weights=weight_vec,
+                                 alpha=best_alpha, lambda=lambda_seq)
+          } else
+          {
+            fit_glmnet <- glmnet(rbind(X_train_val, X_olddomain), c(y_train_val, y_olddomain), family="binomial", 
+                                 alpha=best_alpha, lambda=lambda_seq)
+          }
+          
+          
+          # test immediately on the training
+          
+          # on the new domain training data
+          predprobs_train_newdomain <- 
+            predict(fit_glmnet, newx=X_train_val, s=best_lambda, type="response")
+          rocValues_train_newdomain <- 
+            roc(response=as.vector(y_train_val), 
+                predictor=as.vector(predprobs_train_newdomain), 
+                direction="<")
+          auc_train_allfolds_newdomain[iFold, 1] <- rocValues_train_newdomain$auc
+          
+          # on the old domain training data
+          predprobs_train_olddomain <- 
+            predict(fit_glmnet, newx=X_olddomain, s=best_lambda, type="response")
+          rocValues_train_olddomain <- 
+            roc(response=as.vector(y_olddomain), 
+                predictor=as.vector(predprobs_train_olddomain),
+                direction="<")
+          auc_train_allfolds_olddomain[iFold, 1] <- rocValues_train_olddomain$auc
+          
+          
+          
+          # test
+          
+          predprobs_test <- 
+            predict(fit_glmnet, newx=X_test, s=best_lambda, type="response")
+          
+          # keep the prediction probs
+          
+          predprobs_alldata[test_ids, 1] <- predprobs_test
+          
+          # 
+          
+          params_allfolds[iFold, 1] <- best_alpha
+          params_allfolds[iFold, 2] <- best_lambda
+          rownames(params_allfolds)[iFold] <- paste("fold_", iFold, sep="")
         }
+        cat("\n")
         
-        return (mean(auc_all_val_folds_one_lambda))
+        
+        # average the probabilities of all evaluation folds as the final result
+        
+        pred <- 
+          prediction(predictions=predprobs_alldata[, 1], labels=y_newdomain)
+        perf <- 
+          performance(pred, measure = "tpr", x.measure = "fpr") 
+        png(filename=paste(resultDir_thisrepeat, study_name, "_roc.png", sep=""))
+        plot(perf, col=rainbow(10))
+        dev.off()
+        
+        rocValues <- 
+          roc(response=as.vector(y_newdomain), 
+              predictor=as.vector(predprobs_alldata[, 1]),
+              direction="<")
+        av_auc <- rocValues$auc
+        
+        # save all the predictions (of every imputation version and the pooled version)
+        
+        write.table(predprobs_alldata, sep=",", 
+                    file=paste(resultDir_thisrepeat, study_name,"_probs.csv", sep=""), col.names=NA)
+        
+        write.table(params_allfolds, sep=",", 
+                    file=paste(resultDir_thisrepeat,study_name,"params_allfolds.csv", sep=""), col.names=NA)
+        
+        # average ranking
+        
+        write.table(ranks_allalphas_folds, sep=",", 
+                    file=paste(resultDir_thisrepeat, "rankings_",study_name, ".csv", sep=""))
+        
+        av_ranking <- matrix(rowMeans(ranks_allalphas_folds), ncol=1)
+        rownames(av_ranking) <- rownames(ranks_allalphas_folds)
+        av_ranking <- av_ranking[order(av_ranking),]
+        write.table(av_ranking, sep=",", 
+                    file=paste(resultDir_thisrepeat, "av_ranking_",study_name, ".csv", sep=""))
+        
+        # average coefficients
+        
+        write.table(coefs_allalphas_folds, sep=",", 
+                    file=paste(resultDir_thisrepeat, "coefs_",study_name, ".csv", sep=""))
+        
+        av_coefs <- matrix(rowMeans(coefs_allalphas_folds), ncol=1)
+        rownames(av_coefs) <- rownames(coefs_allalphas_folds)
+        write.table(av_coefs, sep=",", 
+                    file=paste(resultDir_thisrepeat, "av_coefs_",study_name, ".csv", sep=""))
+        
+        
+        #     if (i_study == 1)
+        #     {
+        #       writeLines(paste("", paste(colnames(auc_allalphas_minlambda),collapse=","),sep=","), 
+        #                  fileAvAUCs_train_minlambda_newdomain)
+        #       writeLines(paste("", paste(colnames(auc_allalphas_minlambda),collapse=","),sep=","), 
+        #                  fileAvAUCs_train_1selambda_newdomain)
+        #       writeLines(paste("", paste(colnames(auc_allalphas_minlambda),collapse=","),sep=","), 
+        #                  fileAvAUCs_train_minlambda_olddomain)
+        #       writeLines(paste("", paste(colnames(auc_allalphas_minlambda),collapse=","),sep=","), 
+        #                  fileAvAUCs_train_1selambda_olddomain)
+        #       writeLines(paste("", paste(colnames(auc_allalphas_minlambda),collapse=","),sep=","), fileAvAUCs_test_minlambda)
+        #       writeLines(paste("", paste(colnames(auc_allalphas_minlambda),collapse=","),sep=","), fileAvAUCs_test_1selambda)
+        #     }
+        writeLines(paste(study_name, 
+                         paste(colMeans(auc_train_allfolds_newdomain),collapse=","), 
+                         sep=","), fileAvAUCs_train_newdomain)
+        writeLines(paste(study_name, 
+                         paste(colMeans(auc_train_allfolds_olddomain),collapse=","), 
+                         sep=","), fileAvAUCs_train_olddomain)
+        writeLines(paste(study_name, av_auc, sep=","), fileAvAUCs_test)
+        
+        i_study = i_study + 1
       }
-      
-      iLambda_best <- which.max(auc_all_lambdas)
-      lambda_best <- lambda_seq[iLambda_best]
-      
-      
-      # evaluation
-      fit_eval <- glmnet(X_train_val, y_train_val, family="binomial", 
-                          alpha=alphaVals[iAlpha],
-                          weights=weight_vec_train_val, lambda=lambda_best)
-      
-      save(fit_eval, file=paste(resultDir, "model_", data_names[iDataSet], "alpha", 
-                              alphaVals[iAlpha], "_fold_", iFoldEval, ".RData", sep=""))
-      
-      preds_probs_eval <- predict(fit_eval, newx = X_test, type="response")
-      
-      
-      
-      # preds_alldata_allAlphas[test_ids, iAlpha] <- preds_probs_eval
-      preds_1fold_eval_allalphas[, iAlpha] <- preds_probs_eval
-      
-      lambda_1fold_eval_allalphas[iAlpha] <- lambda_best
-      
-#       roc_values_eval <- roc(response=as.vector(y_test), 
-#                              predictor=as.vector(preds_probs_eval))
-#       aucs_all_folds_allAlphas[iFoldEval, iAlpha] = roc_values_eval$auc
-      # colnames(preds_alldata_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-      # lambda_all_folds_allAlphas[iFoldEval, iAlpha] = lambda_best
-      # colnames(lambda_all_folds_allAlphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-      
       
       
     }
     
-    # upper left: test_ids
-    # upper right: preds all alphas
-    # lower left: fold_id (useless)
-    # lower right: lambdas all alphas
-    result_1fold_eval <- rbind(preds_1fold_eval_allalphas, lambda_1fold_eval_allalphas)
-    result_1fold_eval <- cbind(c(test_ids,iFoldEval), result_1fold_eval)
+    close(fileAvAUCs_train_newdomain)
+    close(fileAvAUCs_train_olddomain)
+    close(fileAvAUCs_test)
     
-#     filename_tmp <- paste(resultDir,data_names[iDataSet],"_tmp_fold_", iFoldEval, ".csv", sep="")
-#     file_tmp <- file(filename_tmp)
-#     write.table(result_1fold_eval, sep=",", 
-#                 file=file_tmp, 
-#                 col.names=FALSE, row.names=FALSE)
-#     close(file_tmp)
-    
-    # return (result_1fold_eval)
-    return (c(1,2))
   }
-  cat("\n")
   
-  stopCluster(cl)
   
-  # parse par_results to fill in the resultant matrices
   
-  for (iFoldEval in 1:kFoldsEval)
+  runtime <- proc.time() - ptm
+  
+  cat(paste("Time elapsed:", round(runtime[3],1), "seconds."))
+  
+  if (bParallel)
   {
-    results_1fold <- par_results[[iFoldEval]]
-    # upper left: test_ids
-    # upper right: preds all alphas
-    # lower left: fold_id (useless)
-    # lower right: lambdas all alphas
-    test_ids <- results_1fold[1:(nrow(results_1fold)-1), 1]
-    preds <- results_1fold[1:(nrow(results_1fold)-1), 2:ncol(results_1fold)]
-    lambdas <- results_1fold[nrow(results_1fold), 2:ncol(results_1fold)]
-    
-    preds_alldata_allAlphas[test_ids, ] <- preds
-    lambda_all_folds_allAlphas[iFoldEval,] <- lambdas
+    stopCluster(cl)
   }
-  
-  
-  
-  # finally compute the result metrics using every prediction
-  
-  auc_all_alphas <- matrix(data=0, nrow=1, ncol=length(alphaVals))
-  colnames(auc_all_alphas) <- rep("", length(alphaVals))
-  for (iAlpha in 1:length(alphaVals))
-  {
-    pred <- prediction(predictions=preds_alldata_allAlphas[,iAlpha], labels=y)
-    perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-    png(filename=paste(resultDir, data_names[iDataSet], "_roc_alpha", 
-                       alphaVals[iAlpha], ".png", sep=""))
-    plot(perf, col=rainbow(10))
-    dev.off()
-    
-    roc_values_eval <- roc(response=as.vector(y), 
-                           predictor=as.vector(preds_alldata_allAlphas[,iAlpha]))
-    auc_all_alphas[iAlpha] = roc_values_eval$auc
-    colnames(auc_all_alphas)[iAlpha] <- paste("alpha_",alphaVals[iAlpha],sep="")
-  }
-  
-  write.table(auc_all_alphas, sep=",", 
-              file=paste(resultDir,data_names[iDataSet],"_aucs.csv", sep=""), row.names=FALSE)
-  
-  write.table(preds_alldata_allAlphas, sep=",", 
-              file=paste(resultDir,data_names[iDataSet],"_preds.csv", sep=""), row.names=FALSE)
-  
-#   write.table(aucs_all_folds_allAlphas, sep=",", 
-#               file=paste(resultDir,data_names[iDataSet],"_aucs.csv", sep=""), col.names=NA)
-  write.table(lambda_all_folds_allAlphas, sep=",", 
-              file=paste(resultDir,data_names[iDataSet],"_lambdas.csv", sep=""), col.names=NA)
-  
-  if (iDataSet == 1)
-    writeLines(paste("", paste(colnames(auc_all_alphas),collapse=","),sep=","), fileAvAUCs)
-  writeLines(paste(data_names[iDataSet], paste(auc_all_alphas,collapse=","), sep=","), fileAvAUCs)
-}
+}, options=list(optimize=3))
 
-close(fileAvAUCs)
+# the main script
 
-
-
-runtime <- proc.time() - ptm
-
-cat(paste("Time elapsed:", round(runtime[3],1), "seconds."))
-
-# stopCluster(cl)
-
+main()
