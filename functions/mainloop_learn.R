@@ -19,8 +19,6 @@ selectAlphaLambda_ManualCV <- function(alphaVals, X_train_val, y_train_val,
       manualCV_lambdaonly(X_train_val, y_train_val,
                           alphaVals[iAlpha], weight_vec, bClassWeights,
                           kFoldsVal, lambda_seq, bParallel)
-    cat("after manualCV_lambdaonly\n")
-    
     if (bClassWeights)
       fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
                            weights=weight_vec,
@@ -203,7 +201,6 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       # compute weights
       
       weight_vec <- computeWeights(y_train_val)
-      cat("after computeWeights\n")
       
       if (bManualCV)
         selected_alpha_lambda <- 
