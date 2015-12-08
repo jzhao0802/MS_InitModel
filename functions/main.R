@@ -37,6 +37,8 @@ main <- function(arglist)
   bManualCV <- arglist$bManualCV
   
   bParallel <- arglist$bParallel
+  nCores2Use <- arglist$nCores2Use
+  
   kFoldsEval <- arglist$kFoldsEval
   kFoldsVal <- arglist$kFoldsVal
   alphaVals <- arglist$alphaVals
@@ -61,8 +63,8 @@ main <- function(arglist)
   # 
   if (bParallel)
   {
-    cl <- makeCluster(detectCores() - 1)
-    registerDoParallel(cl, cores = detectCores() - 1)
+    cl <- makeCluster(nCores2Use)
+    registerDoParallel(cl, cores = nCores2Use)
   }
   
   # 

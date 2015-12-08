@@ -6,6 +6,7 @@ source("functions/main.R")
 
 main.arglist <- list()
 main.arglist$bParallel <- F
+main.arglist$nCores2Use <- detectCores() - 1
 
 main.arglist$kFoldsEval <- 3
 main.arglist$kFoldsVal <- 3
