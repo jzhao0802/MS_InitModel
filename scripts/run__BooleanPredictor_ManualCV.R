@@ -34,5 +34,6 @@ main.arglist$data_dir <- "c:/Work/Projects/MultipleSclerosis/Results/2015-10-17/
 main.arglist$data_names <- c("B2F_relapse_fu_any_01")
 
 main.arglist$bTransferLearn <- F
+main.arglist$bManualCV <- F
 
 main(main.arglist)

@@ -1,4 +1,118 @@
-mainloop_learn <- function(bParallel, kFoldsEval, kFoldsVal, alphaVals, 
+selectAlphaLambda_ManualCV <- function(alphaVals, X_train_val, y_train_val, 
+                                       weight_vec, bClassWeights, kFoldsVal, 
+                                       lambda_seq, bParallel, iFold, n_alphas,
+                                       # the next are output variables
+                                       coefs_allalphas_folds, ranks_allalphas_folds)
+{
+  cv_results_allalphas <- list()
+  
+  for (iAlpha in 1:length(alphaVals))
+  {
+    # cat("Fold ", iFold, "alpha ", alphaVals[iAlpha], "\n")
+    
+    # train
+    
+    # set.seed(1011)
+    # alpha=1 (default), lasso; alpha=0, ridge
+    
+    cv_results_allalphas[[iAlpha]] <- 
+      manualCV_lambdaonly(X_train_val, y_train_val,
+                          alphaVals[iAlpha], weight_vec, bClassWeights,
+                          kFoldsVal, lambda_seq, bParallel)
+    cat("after manualCV_lambdaonly\n")
+    
+    if (bClassWeights)
+      fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
+                           weights=weight_vec,
+                           alpha=alphaVals[iAlpha], lambda=lambda_seq)
+    else
+      fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
+                           alpha=alphaVals[iAlpha], lambda=lambda_seq)
+    
+    coefficients <- 
+      coef(fit_glmnet, s=cv_results_allalphas[[iAlpha]][[1]])[2:(ncol(X_train_val)+1),]
+    coefs_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- coefficients
+    colnames(coefs_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
+      paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
+    
+    ranks_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- 
+      getRanking(coefficients)
+    colnames(ranks_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
+      paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
+  }
+  
+  # find the best alpha
+  best_auc <- 0
+  for (iAlpha in 1:length(alphaVals))
+  {
+    if (cv_results_allalphas[[iAlpha]][[2]] > best_auc)
+    {
+      best_auc <- cv_results_allalphas[[iAlpha]][[2]]
+      best_alpha <- alphaVals[iAlpha]
+      best_lambda <- cv_results_allalphas[[iAlpha]][[1]]
+    }
+  }
+  
+  result <- list(alpha=best_alpha, lambda=best_lambda, 
+                 coefs_allalphas_folds=coefs_allalphas_folds, 
+                 ranks_allalphas_folds=ranks_allalphas_folds)
+  return (result)
+}
+
+selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val, 
+                                       weight_vec, bClassWeights, kFoldsVal, 
+                                       lambda_seq, bParallel, iFold, n_alphas,
+                                       # the next are output variables
+                                       coefs_allalphas_folds, ranks_allalphas_folds)
+{
+  cv_results_allalphas <- list()
+  
+  for (iAlpha in 1:length(alphaVals))
+  {
+    if (bClassWeights)
+      cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial",
+                       type.measure="auc", alpha=alphaVals[iAlpha],
+                       weights=weight_vec, nfolds=kFoldsVal,
+                       lambda=lambda_seq, parallel=bParallel)
+    else
+      cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial",
+                       type.measure="auc", alpha=alphaVals[iAlpha],
+                       nfolds=kFoldsVal,
+                       lambda=lambda_seq, parallel=bParallel)
+    cv_result_auc <- cv.fit$cvm[which(cv.fit$lambda == cv.fit$lambda.min)]
+    cv_results_allalphas[[iAlpha]] <- list(cv.fit, cv_result_auc)
+    
+    coefficients <-
+      coef(cv.fit, s=cv.fit$lambda.min)[2:nrow(coef(cv.fit, s=cv.fit$lambda.min)),]
+    coefs_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- coefficients
+    colnames(coefs_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
+      paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
+    
+    ranks_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <-
+      getRanking(coefficients)
+    colnames(ranks_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
+      paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
+  }
+  
+  # find the best alpha
+  best_auc <- 0
+  for (iAlpha in 1:length(alphaVals))
+  {
+    if (cv_results_allalphas[[iAlpha]][[2]] > best_auc)
+    {
+      best_auc <- cv_results_allalphas[[iAlpha]][[2]]
+      best_alpha <- alphaVals[iAlpha]
+      best_lambda <- cv_results_allalphas[[iAlpha]][[1]]$lambda.min
+    }
+  }
+  
+  result <- list(alpha=best_alpha, lambda=best_lambda, 
+                 coefs_allalphas_folds=coefs_allalphas_folds, 
+                 ranks_allalphas_folds=ranks_allalphas_folds)
+  return (result)
+}
+
+mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                            log_lambda_seq, bClassWeights, 
                            n_alphas, lambda_seq, data_dir, data_names, 
                            resultDir)
@@ -91,55 +205,23 @@ mainloop_learn <- function(bParallel, kFoldsEval, kFoldsVal, alphaVals,
       weight_vec <- computeWeights(y_train_val)
       cat("after computeWeights\n")
       
-      cv_results_allalphas <- list()
+      if (bManualCV)
+        selected_alpha_lambda <- 
+          selectAlphaLambda_ManualCV(alphaVals, X_train_val, y_train_val, 
+                                     weight_vec, bClassWeights, kFoldsVal, 
+                                     lambda_seq, bParallel, iFold, n_alphas,
+                                     coefs_allalphas_folds, ranks_allalphas_folds)
+      else
+        selected_alpha_lambda <- 
+          selectAlphaLambda_BuiltInCV(alphaVals, X_train_val, y_train_val, 
+                                      weight_vec, bClassWeights, kFoldsVal, 
+                                      lambda_seq, bParallel, iFold, n_alphas,
+                                      coefs_allalphas_folds, ranks_allalphas_folds)
       
-      for (iAlpha in 1:length(alphaVals))
-      {
-        # cat("Fold ", iFold, "alpha ", alphaVals[iAlpha], "\n")
-        
-        # train
-        
-        # set.seed(1011)
-        # alpha=1 (default), lasso; alpha=0, ridge
-        
-        cv_results_allalphas[[iAlpha]] <- 
-          manualCV_lambdaonly(X_train_val, y_train_val,
-                              alphaVals[iAlpha], weight_vec, bClassWeights,
-                              kFoldsVal, lambda_seq, bParallel)
-        cat("after manualCV_lambdaonly\n")
-        
-        if (bClassWeights)
-          fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
-                              weights=weight_vec,
-                              alpha=alphaVals[iAlpha], lambda=lambda_seq)
-        else
-          fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
-                               alpha=alphaVals[iAlpha], lambda=lambda_seq)
-        
-        coefficients <- 
-          coef(fit_glmnet, s=cv_results_allalphas[[iAlpha]][[1]])[2:(ncol(X_train_val)+1),]
-        coefs_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- coefficients
-        colnames(coefs_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
-          paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
-        
-        ranks_allalphas_folds[, iAlpha+(iFold-1)*n_alphas] <- 
-          getRanking(coefficients)
-        colnames(ranks_allalphas_folds)[iAlpha+(iFold-1)*n_alphas] <-
-          paste("alpha_", alphaVals[iAlpha], "_fold_", iFold, sep="")
-      }
-      
-      # find the best alpha
-      best_auc <- 0
-      for (iAlpha in 1:length(alphaVals))
-      {
-        if (cv_results_allalphas[[iAlpha]][[2]] > best_auc)
-        {
-          best_auc <- cv_results_allalphas[[iAlpha]][[2]]
-          best_alpha <- alphaVals[iAlpha]
-          best_lambda <- cv_results_allalphas[[iAlpha]][[1]]
-        }
-      }
-      
+      best_alpha <- selected_alpha_lambda$alpha
+      best_lambda <- selected_alpha_lambda$lambda
+      coefs_allalphas_folds <- selected_alpha_lambda$coefs_allalphas_folds
+      ranks_allalphas_folds <- selected_alpha_lambda$ranks_allalphas_folds
       
       # train with the selected params
       
