@@ -65,17 +65,19 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
 {
   cv_results_allalphas <- list()
   
+  fold_ids <- stratifyFoldIDs(y_train_val, kFoldsVal)
+  
   for (iAlpha in 1:length(alphaVals))
   {
     if (bClassWeights)
       cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial",
                        type.measure="auc", alpha=alphaVals[iAlpha],
-                       weights=weight_vec, nfolds=kFoldsVal,
+                       weights=weight_vec, foldid=fold_ids,
                        lambda=lambda_seq, parallel=bParallel)
     else
       cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial",
                        type.measure="auc", alpha=alphaVals[iAlpha],
-                       nfolds=kFoldsVal,
+                       nfolds=kFoldsVal, foldid=fold_ids,
                        lambda=lambda_seq, parallel=bParallel)
     cv_result_auc <- cv.fit$cvm[which(cv.fit$lambda == cv.fit$lambda.min)]
     cv_results_allalphas[[iAlpha]] <- list(cv.fit, cv_result_auc)

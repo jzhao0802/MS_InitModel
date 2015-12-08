@@ -126,3 +126,16 @@ manualStratify <- cmpfun(function(y, kFolds)
   
   return (folds)
 }, options=list(optimize=3))
+
+stratifyFoldIDs <- function(y, k_folds)
+{
+  ids <- 1:k_folds
+  ids_every_pos <- rep(ids, length.out=sum(y==1))
+  ids_every_neg <- rep(ids, length.out=sum(y!=1))
+  
+  ids_every_datum <- rep(-1, length(y))
+  ids_every_datum[which(y==1)] <- ids_every_pos
+  ids_every_datum[which(y!=1)] <- ids_every_neg
+  
+  return (ids_every_datum)
+}
