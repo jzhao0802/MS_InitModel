@@ -34,6 +34,7 @@ main <- function(arglist)
 {
   # input arguments
   bTransferLearn <- arglist$bTransferLearn
+  bManualCV <- arglist$bManualCV
   
   bParallel <- arglist$bParallel
   kFoldsEval <- arglist$kFoldsEval
@@ -85,7 +86,7 @@ main <- function(arglist)
                              n_alphas, lambda_seq, data_dir, cohort_names, 
                              outcome_names, resultDir_thisrepeat)
     else
-      mainloop_learn(bParallel, kFoldsEval, kFoldsVal, alphaVals, 
+      mainloop_learn(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                      log_lambda_seq, bClassWeights, 
                      n_alphas, lambda_seq, data_dir, data_names, 
                      resultDir_thisrepeat)
