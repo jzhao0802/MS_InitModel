@@ -3,8 +3,6 @@ library(doParallel)
 library(glmnet)
 library(compiler)
 
-# source("functions/computeWeights.R")
-
 # comb <- function(x, ...) {
 #   lapply(seq_along(x),
 #          function(i) 
@@ -36,8 +34,8 @@ manualCV_lambdaonly <- cmpfun(function(X_train_val, y_train_val,
                                X_train <- data.matrix(X_train_val[train_ids,])
                                y_train <- y_train_val[train_ids]
                                X_val <- data.matrix(X_train_val[val_ids,])
-                               y_val <- y_train_val[val_ids]
-                               
+                               y_val <- y_train_val[val_ids]                               
+
                                if (bClassWeights)
                                {
                                  weight_vec_train <- weight_vec[train_ids]
@@ -50,7 +48,7 @@ manualCV_lambdaonly <- cmpfun(function(X_train_val, y_train_val,
                                  fit_glmnet <- glmnet(X_train, y_train, family="binomial",
                                                       alpha=alpha_value, lambda=lambda_seq)
                                }
-                               
+
                                # validate
                                
                                predprobs <- 
@@ -59,7 +57,6 @@ manualCV_lambdaonly <- cmpfun(function(X_train_val, y_train_val,
                                               direction="<")
                                auc_allfolds_onelambda[i_fold] <- roc_obj$auc
                              }
-                             
                              auc_allfolds_onelambda
                            }
   } else
@@ -156,7 +153,7 @@ manualCV_lambdaonly_2Domains <- cmpfun(function(X_newdomain, X_olddomain,
                                y_train <- c(y_newdomain[train_ids], y_olddomain)
                                X_val <- data.matrix(X_newdomain[val_ids,])
                                y_val <- y_newdomain[val_ids]
-                               
+
                                if (bClassWeights)
                                {
                                  weight_vec_train <- c(weight_vec[train_ids], 
@@ -177,11 +174,8 @@ manualCV_lambdaonly_2Domains <- cmpfun(function(X_newdomain, X_olddomain,
                                  predict(fit_glmnet, newx=X_val, s=candidate_lambda, type="response")
                                roc_obj <- roc(response=as.vector(y_val), predictor=as.vector(predprobs),
                                               direction="<")
-                               auc_allfolds_onelambda[i_fold] <- roc_obj$auc
-                               
+                               auc_allfolds_onelambda[i_fold] <- roc_obj$auc                               
                              }
-                             
-                             
                              auc_allfolds_onelambda
                            }
   } else
@@ -221,11 +215,8 @@ manualCV_lambdaonly_2Domains <- cmpfun(function(X_newdomain, X_olddomain,
                                  predict(fit_glmnet, newx=X_val, s=candidate_lambda, type="response")
                                roc_obj <- roc(response=as.vector(y_val), predictor=as.vector(predprobs),
                                               direction="<")
-                               auc_allfolds_onelambda[i_fold] <- roc_obj$auc
-                               
+                               auc_allfolds_onelambda[i_fold] <- roc_obj$auc                               
                              }
-                             
-                             
                              auc_allfolds_onelambda
                            }
   }

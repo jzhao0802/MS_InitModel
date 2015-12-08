@@ -18,5 +18,6 @@ main.arglist$data_dir <- "C:/Work/Projects/MultipleSclerosis/Results/2015-10-06/
 main.arglist$cohort_names <- c("continue", "B2F")
 main.arglist$outcome_names <- c("relapse_fu_any_01")
 
+main.arglist$bTransferLearn <- T
 
 main(main.arglist)
