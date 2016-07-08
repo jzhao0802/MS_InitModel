@@ -8,10 +8,10 @@ main.arglist <- list()
 main.arglist$bParallel <- F
 main.arglist$nCores2Use <- detectCores() - 1
 
-main.arglist$kFoldsEval <- 5
-main.arglist$kFoldsVal <- 5
-main.arglist$alphaVals <- seq(log(0),1,length.out=20)
-main.arglist$log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=100)
+main.arglist$kFoldsEval <- 3
+main.arglist$kFoldsVal <- 3
+main.arglist$alphaVals <- seq(0,1,length.out=2)
+main.arglist$log_lambda_seq <- seq(log(1e-4),log(1e4),length.out=10)
 main.arglist$bClassWeights <- T
 main.arglist$n_repeats <- 1
 
