@@ -1,6 +1,42 @@
 library(caret)
 library(compiler)
 
+DivideIntoFolds <- function(IDs, kFolds)
+{
+  if (length(IDs) < kFolds)
+    stop("Error! Number of data is smaller than kFolds!")
+  
+  avNDataPerFold <- length(IDs) / kFolds
+  pointer <- 1
+  frac <- 0
+  
+  IDsAllFolds <- list()
+  
+  for (iFold in 1:kFolds)
+  {
+    if (iFold != kFolds)
+    {
+      frac <- frac + avNDataPerFold - floor(avNDataPerFold)
+      if (frac >= 1)
+      {
+        IDsThisFold <- IDs[pointer:(pointer+floor(avNDataPerFold))]
+        frac <- frac-1
+      } else
+        IDsThisFold <- IDs[pointer:(pointer+floor(avNDataPerFold)-1)]
+      
+      pointer <- pointer + length(IDsThisFold)
+      
+    } else 
+    {
+      IDsThisFold <- IDs[pointer:length(IDs)]
+    }
+    
+    IDsAllFolds[[iFold]] <- IDsThisFold
+  }
+  
+  return (IDsAllFolds)
+}
+
 manualStratify <- cmpfun(function(y, k_folds)
 {
   if (!(all(levels(y) %in% c(0,1))))
