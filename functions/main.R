@@ -49,6 +49,8 @@ main <- function(arglist)
   n_alphas <- length(alphaVals)
   lambda_seq <- exp(log_lambda_seq)
   
+  outcomeNames <- arglist$outcomes
+  
   data_dir <- arglist$data_dir
   if (bTransferLearn)
   {
@@ -58,6 +60,8 @@ main <- function(arglist)
   {
     data_names <- arglist$data_names
   }
+  
+  idColName <- arglist$idColName
   
   
   # 
@@ -90,7 +94,8 @@ main <- function(arglist)
     else
       mainloop_learn(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                      log_lambda_seq, bClassWeights, 
-                     n_alphas, lambda_seq, data_dir, data_names, 
+                     n_alphas, lambda_seq, data_dir, data_names, outcomeNames,
+                     idColName, 
                      resultDir_thisrepeat)
   }
   

@@ -1,3 +1,5 @@
+library(dplyr)
+
 selectAlphaLambda_ManualCV <- function(alphaVals, X_train_val, y_train_val, 
                                        weight_vec, bClassWeights, kFoldsVal, 
                                        lambda_seq, bParallel, iFold, n_alphas,
@@ -114,212 +116,207 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
 
 mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                            log_lambda_seq, bClassWeights, 
-                           n_alphas, lambda_seq, data_dir, data_names, 
+                           n_alphas, lambda_seq, data_dir, data_names, outcomeNames,
+                           idColName,
                            resultDir)
 {
   fileAvAUCs_test <- file(paste(resultDir, "AvAUCs_test.csv", sep=""), "w")
   fileAvAUCs_train <- file(paste(resultDir, "AvAUCs_train.csv", sep=""), "w")
   
   
-  for (iDataSet in 1:length(data_names))
+  for (iCohort in 1:length(data_names))
   {
-    cat(paste(data_names[iDataSet], ", fold ", sep=""))
+    cat(paste0(data_names[iCohort], ", "))
     
-    dataset <- read.csv(paste(data_dir, data_names[iDataSet],"_data_for_model.csv", sep=""), 
+    dataset <- read.csv(paste0(data_dir, data_names[iCohort],"4model.csv"), 
                         header=TRUE, sep=",", check.names=FALSE)
     
-    # first column is index
-    dataset[,1] <- NULL
+    resultDirPerCohort <- paste0(resultDir, data_names[iCohort], "/")
+    dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
     
-    y <- dataset[, 1]
-    
-    X <- dataset[, 2:ncol(dataset)]
-    
-    X <- data.matrix(X)
-    
-    write.table(cbind(y,X), sep=",", 
-                file=paste(resultDir, data_names[iDataSet],"_data_for_model", 
-                           ".csv", sep=""), col.names=NA)
-    
-    
-    #   # standardise
-    #   col_ids_2_check <- which(apply(X, 2, sd) != 0)
-    #   if (any(apply(X[,col_ids_2_check], 2, sd) != 1) 
-    #       | any(apply(X[,col_ids_2_check], 2, mean) != 0)) {
-    #     X[,col_ids_2_check] <- scale(X[,col_ids_2_check])
-    #   } 
-    n_data = nrow(X)
-    
-    
-    # stratification for evaluation
-    
-    folds <- manualStratify(y, kFoldsEval)
-    
-    #
-    # containers 
-    
-    predprobs_alldata <- matrix(data=-1, nrow=n_data, ncol=1)
-    
-    auc_train_allfolds <- 
-      matrix(data=-1, nrow=kFoldsEval, ncol=1)
-    
-    params_allfolds <- matrix(data=-1, nrow=kFoldsEval, ncol=2)
-    colnames(params_allfolds) <- c("alpha", "lambda")
-    rownames(params_allfolds) <- rep("", nrow(params_allfolds))
-    
-    # variable importance rankings
-    ranks_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
-    colnames(ranks_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
-    rownames(ranks_allalphas_folds) <- colnames(X)
-    
-    coefs_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
-    colnames(coefs_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
-    rownames(coefs_allalphas_folds) <- colnames(X)
-    
-    
-    
-    for (iFold in 1:length(folds))
+    for (outcomeName in outcomeNames)
     {
-      cat(paste(iFold, "..", sep=""))
+      cat(paste0(outcomeName, "\n"))
+      y <- dataset[, outcomeName]
       
-      train_val_ids <- folds[[iFold]]
-      test_ids <- which(!((1:n_data) %in% train_val_ids))
-      X_train_val <- X[train_val_ids,]
-      X_test <- X[-train_val_ids,]
-      y_train_val <- y[train_val_ids]
-      y_test <- y[-train_val_ids]
+      X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
       
-      if (any(data_names[iDataSet] == 
-              c("continue_edssprog", "continue_relapse_fu_any_01", 
-                "continue_confrelapse", "continue_edssconf3", 
-                "continue_progrelapse")))
+      X <- data.matrix(X)
+      
+      write.table(cbind(y,X), sep=",", 
+                  file=paste(resultDirPerCohort, data_names[iCohort],"_data_for_model", 
+                             ".csv", sep=""), row.names=F)
+      
+      
+      #   # standardise
+      #   col_ids_2_check <- which(apply(X, 2, sd) != 0)
+      #   if (any(apply(X[,col_ids_2_check], 2, sd) != 1) 
+      #       | any(apply(X[,col_ids_2_check], 2, mean) != 0)) {
+      #     X[,col_ids_2_check] <- scale(X[,col_ids_2_check])
+      #   } 
+      n_data = nrow(X)
+      
+      
+      # stratification for evaluation
+      
+      folds <- manualStratify(y, kFoldsEval)
+      
+      #
+      # containers 
+      
+      predprobs_alldata <- matrix(data=-1, nrow=n_data, ncol=1)
+      
+      auc_train_allfolds <- 
+        matrix(data=-1, nrow=kFoldsEval, ncol=1)
+      
+      params_allfolds <- matrix(data=-1, nrow=kFoldsEval, ncol=2)
+      colnames(params_allfolds) <- c("alpha", "lambda")
+      rownames(params_allfolds) <- rep("", nrow(params_allfolds))
+      
+      # variable importance rankings
+      ranks_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
+      colnames(ranks_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
+      rownames(ranks_allalphas_folds) <- colnames(X)
+      
+      coefs_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
+      colnames(coefs_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
+      rownames(coefs_allalphas_folds) <- colnames(X)
+      
+      
+      cat("Fold ")
+      for (iFold in 1:length(folds))
       {
-        dayssup_name <- "precont_dayssup"
-      } else
-      {
-        dayssup_name <- "switch_rx_dayssup"
-      }
-      
-      # compute weights
-      
-      weight_vec <- computeWeights(y_train_val)
-      
-      if (bManualCV)
-        selected_alpha_lambda <- 
+        cat(paste(iFold, "..", sep=""))
+        
+        train_val_ids <- folds[[iFold]]
+        test_ids <- which(!((1:n_data) %in% train_val_ids))
+        X_train_val <- X[train_val_ids,]
+        X_test <- X[-train_val_ids,]
+        y_train_val <- y[train_val_ids]
+        y_test <- y[-train_val_ids]
+        
+        # compute weights
+        
+        weight_vec <- computeWeights(y_train_val)
+        
+        if (bManualCV)
+          selected_alpha_lambda <- 
           selectAlphaLambda_ManualCV(alphaVals, X_train_val, y_train_val, 
                                      weight_vec, bClassWeights, kFoldsVal, 
                                      lambda_seq, bParallel, iFold, n_alphas,
                                      coefs_allalphas_folds, ranks_allalphas_folds)
-      else
-        selected_alpha_lambda <- 
+        else
+          selected_alpha_lambda <- 
           selectAlphaLambda_BuiltInCV(alphaVals, X_train_val, y_train_val, 
                                       weight_vec, bClassWeights, kFoldsVal, 
                                       lambda_seq, bParallel, iFold, n_alphas,
                                       coefs_allalphas_folds, ranks_allalphas_folds)
+        
+        best_alpha <- selected_alpha_lambda$alpha
+        best_lambda <- selected_alpha_lambda$lambda
+        coefs_allalphas_folds <- selected_alpha_lambda$coefs_allalphas_folds
+        ranks_allalphas_folds <- selected_alpha_lambda$ranks_allalphas_folds
+        
+        # train with the selected params
+        
+        if (bClassWeights)
+          fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
+                               weights=weight_vec,
+                               alpha=best_alpha, lambda=lambda_seq)
+        else
+          fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
+                               alpha=best_alpha, lambda=lambda_seq)
+        
+        # test immediately on the training
+        
+        predprobs_train <- 
+          predict(fit_glmnet, newx = X_train_val, type="response", s=best_lambda)
+        rocValues_train <- 
+          roc(response=as.vector(y_train_val), 
+              predictor=as.vector(predprobs_train),
+              direction="<")
+        auc_train_allfolds[iFold, 1] <- rocValues_train$auc
+        
+        
+        
+        
+        # test
+        
+        predprobs_test <- 
+          predict(fit_glmnet, newx = X_test, type="response", s=best_lambda)
+        
+        
+        
+        # keep the prediction probs
+        
+        predprobs_alldata[test_ids, 1] <- 
+          predprobs_test
+        
+        # 
+        
+        params_allfolds[iFold, 1] <- best_alpha
+        params_allfolds[iFold, 2] <- best_lambda
+        rownames(params_allfolds)[iFold] <- paste("fold_", iFold, sep="")
+      }
+      cat("\n")
       
-      best_alpha <- selected_alpha_lambda$alpha
-      best_lambda <- selected_alpha_lambda$lambda
-      coefs_allalphas_folds <- selected_alpha_lambda$coefs_allalphas_folds
-      ranks_allalphas_folds <- selected_alpha_lambda$ranks_allalphas_folds
       
-      # train with the selected params
+      # result metrics
       
-      if (bClassWeights)
-        fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
-                             weights=weight_vec,
-                             alpha=best_alpha, lambda=lambda_seq)
-      else
-        fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
-                             alpha=best_alpha, lambda=lambda_seq)
+      pred <- 
+        prediction(predictions=predprobs_alldata[, 1], labels=y)
+      perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+      png(filename=paste(resultDirPerCohort, data_names[iCohort], "_roc.png", sep=""))
+      plot(perf, col=rainbow(10))
+      dev.off()
       
-      # test immediately on the training
-      
-      predprobs_train <- 
-        predict(fit_glmnet, newx = X_train_val, type="response", s=best_lambda)
-      rocValues_train <- 
-        roc(response=as.vector(y_train_val), 
-            predictor=as.vector(predprobs_train),
+      rocValues <- 
+        roc(response=as.vector(y), 
+            predictor=as.vector(predprobs_alldata[, 1]),
             direction="<")
-      auc_train_allfolds[iFold, 1] <- rocValues_train$auc
+      auc_test <- rocValues$auc
+      
+      # save all the predictions (of every imputation version and the pooled version)
+      
+      write.table(predprobs_alldata, sep=",", 
+                  file=paste(resultDirPerCohort, data_names[iCohort],"_probs.csv", sep=""), col.names=NA)
+      
+      write.table(params_allfolds, sep=",", 
+                  file=paste(resultDirPerCohort,data_names[iCohort],"_params.csv", sep=""), col.names=NA)
+      
+      # average ranking
+      
+      write.table(ranks_allalphas_folds, sep=",", 
+                  file=paste(resultDirPerCohort, "rankings_",data_names[iCohort], 
+                             ".csv", sep=""))
+      
+      av_ranking <- matrix(rowMeans(ranks_allalphas_folds), ncol=1)
+      rownames(av_ranking) <- rownames(ranks_allalphas_folds)
+      av_ranking <- av_ranking[order(av_ranking),]
+      write.table(av_ranking, sep=",", 
+                  file=paste(resultDirPerCohort, "av_ranking_",data_names[iCohort], 
+                             ".csv", sep=""))
+      
+      # average coefficients
+      
+      write.table(coefs_allalphas_folds, sep=",", 
+                  file=paste(resultDirPerCohort, "coefs_",data_names[iCohort], 
+                             ".csv", sep=""))
+      
+      av_coefs <- matrix(rowMeans(coefs_allalphas_folds), ncol=1)
+      rownames(av_coefs) <- rownames(coefs_allalphas_folds)
+      write.table(av_coefs, sep=",", 
+                  file=paste(resultDirPerCohort, "av_coefs_",data_names[iCohort], 
+                             ".csv", sep=""))
       
       
-      
-      
-      # test
-      
-      predprobs_test <- 
-        predict(fit_glmnet, newx = X_test, type="response", s=best_lambda)
-      
-      
-      
-      # keep the prediction probs
-      
-      predprobs_alldata[test_ids, 1] <- 
-        predprobs_test
-      
-      # 
-      
-      params_allfolds[iFold, 1] <- best_alpha
-      params_allfolds[iFold, 2] <- best_lambda
-      rownames(params_allfolds)[iFold] <- paste("fold_", iFold, sep="")
+      writeLines(paste(data_names[iCohort], outcomeName, 
+                       paste(colMeans(auc_train_allfolds),collapse=","), 
+                       sep=","), fileAvAUCs_train)
+      writeLines(paste(data_names[iCohort], outcomeName, auc_test, sep=","), 
+                 fileAvAUCs_test)
     }
-    cat("\n")
     
-    
-    # result metrics
-    
-    pred <- 
-      prediction(predictions=predprobs_alldata[, 1], labels=y)
-    perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-    png(filename=paste(resultDir, data_names[iDataSet], "_roc.png", sep=""))
-    plot(perf, col=rainbow(10))
-    dev.off()
-    
-    rocValues <- 
-      roc(response=as.vector(y), 
-          predictor=as.vector(predprobs_alldata[, 1]),
-          direction="<")
-    auc_test <- rocValues$auc
-    
-    # save all the predictions (of every imputation version and the pooled version)
-    
-    write.table(predprobs_alldata, sep=",", 
-                file=paste(resultDir, data_names[iDataSet],"_probs.csv", sep=""), col.names=NA)
-    
-    write.table(params_allfolds, sep=",", 
-                file=paste(resultDir,data_names[iDataSet],"_params.csv", sep=""), col.names=NA)
-    
-    # average ranking
-    
-    write.table(ranks_allalphas_folds, sep=",", 
-                file=paste(resultDir, "rankings_",data_names[iDataSet], 
-                           ".csv", sep=""))
-    
-    av_ranking <- matrix(rowMeans(ranks_allalphas_folds), ncol=1)
-    rownames(av_ranking) <- rownames(ranks_allalphas_folds)
-    av_ranking <- av_ranking[order(av_ranking),]
-    write.table(av_ranking, sep=",", 
-                file=paste(resultDir, "av_ranking_",data_names[iDataSet], 
-                           ".csv", sep=""))
-    
-    # average coefficients
-    
-    write.table(coefs_allalphas_folds, sep=",", 
-                file=paste(resultDir, "coefs_",data_names[iDataSet], 
-                           ".csv", sep=""))
-    
-    av_coefs <- matrix(rowMeans(coefs_allalphas_folds), ncol=1)
-    rownames(av_coefs) <- rownames(coefs_allalphas_folds)
-    write.table(av_coefs, sep=",", 
-                file=paste(resultDir, "av_coefs_",data_names[iDataSet], 
-                           ".csv", sep=""))
-    
-    
-    writeLines(paste(data_names[iDataSet], 
-                     paste(colMeans(auc_train_allfolds),collapse=","), 
-                     sep=","), fileAvAUCs_train)
-    writeLines(paste(data_names[iDataSet], auc_test, sep=","), 
-               fileAvAUCs_test)
   }
   
   close(fileAvAUCs_train)
