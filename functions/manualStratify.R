@@ -37,7 +37,7 @@ DivideIntoFolds <- function(IDs, kFolds)
   return (IDsAllFolds)
 }
 
-manualStratify <- cmpfun(function(y, k_folds)
+manualStratify <- cmpfun(function(y, k_folds, seed=NULL)
 {
   if (!(all(levels(y) %in% c(0,1))))
   {
@@ -54,6 +54,8 @@ manualStratify <- cmpfun(function(y, k_folds)
   neg_indices <- which(y==0)
   if (length(neg_indices) < k_folds)
     stop("Error! Too few negatives. StratifyEasyDifficultPositives failed.")
+  if (!is.null(seed))
+    set.seed(seed=seed)
   pos_indices <- sample(pos_indices)
   neg_indices <- sample(neg_indices)
   
@@ -75,11 +77,13 @@ manualStratify <- cmpfun(function(y, k_folds)
   return (folds)
 }, option=list(optimize=3))
 
-stratifyFoldIDs <- function(y, k_folds)
+stratifyFoldIDs <- function(y, k_folds, seed=NULL)
 {
   ids <- 1:k_folds
-  ids_every_pos <- rep(ids, length.out=sum(y==1))
-  ids_every_neg <- rep(ids, length.out=sum(y!=1))
+  if (!is.null(seed))
+    set.seed(seed=seed)
+  ids_every_pos <- sample(rep(ids, length.out=sum(y==1)))
+  ids_every_neg <- sample(rep(ids, length.out=sum(y!=1)))
   
   ids_every_datum <- rep(-1, length(y))
   ids_every_datum[which(y==1)] <- ids_every_pos
