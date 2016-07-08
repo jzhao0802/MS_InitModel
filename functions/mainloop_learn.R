@@ -137,14 +137,24 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
     for (outcomeName in outcomeNames)
     {
       cat(paste0(outcomeName, "\n"))
+      
+      resultDirPerOutcome <- paste0(resultDirPerCohort, outcomeName, "/")
+      dir.create(resultDirPerOutcome, showWarnings = TRUE, recursive = TRUE, mode = "0777")
+      
+      
       y <- dataset[, outcomeName]
       
       X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
       
+#       #
+#       # for test
+#       X <- dplyr::select(dataset, -one_of(c("B2B", "B2Fir", "B2Sec")))
+#       X <- dplyr::select(dataset, -matches("dmts"))
+      
       X <- data.matrix(X)
       
       write.table(cbind(y,X), sep=",", 
-                  file=paste(resultDirPerCohort, data_names[iCohort],"_data_for_model", 
+                  file=paste(resultDirPerOutcome, data_names[iCohort],"_data_for_model", 
                              ".csv", sep=""), row.names=F)
       
       
@@ -266,7 +276,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       pred <- 
         prediction(predictions=predprobs_alldata[, 1], labels=y)
       perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-      png(filename=paste(resultDirPerCohort, data_names[iCohort], "_roc.png", sep=""))
+      png(filename=paste(resultDirPerOutcome, data_names[iCohort], "_roc.png", sep=""))
       plot(perf, col=rainbow(10))
       dev.off()
       
@@ -279,34 +289,34 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       # save all the predictions (of every imputation version and the pooled version)
       
       write.table(predprobs_alldata, sep=",", 
-                  file=paste(resultDirPerCohort, data_names[iCohort],"_probs.csv", sep=""), col.names=NA)
+                  file=paste(resultDirPerOutcome, data_names[iCohort],"_probs.csv", sep=""), col.names=NA)
       
       write.table(params_allfolds, sep=",", 
-                  file=paste(resultDirPerCohort,data_names[iCohort],"_params.csv", sep=""), col.names=NA)
+                  file=paste(resultDirPerOutcome,data_names[iCohort],"_params.csv", sep=""), col.names=NA)
       
       # average ranking
       
       write.table(ranks_allalphas_folds, sep=",", 
-                  file=paste(resultDirPerCohort, "rankings_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "rankings_",data_names[iCohort], 
                              ".csv", sep=""))
       
       av_ranking <- matrix(rowMeans(ranks_allalphas_folds), ncol=1)
       rownames(av_ranking) <- rownames(ranks_allalphas_folds)
       av_ranking <- av_ranking[order(av_ranking),]
       write.table(av_ranking, sep=",", 
-                  file=paste(resultDirPerCohort, "av_ranking_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "av_ranking_",data_names[iCohort], 
                              ".csv", sep=""))
       
       # average coefficients
       
       write.table(coefs_allalphas_folds, sep=",", 
-                  file=paste(resultDirPerCohort, "coefs_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "coefs_",data_names[iCohort], 
                              ".csv", sep=""))
       
       av_coefs <- matrix(rowMeans(coefs_allalphas_folds), ncol=1)
       rownames(av_coefs) <- rownames(coefs_allalphas_folds)
       write.table(av_coefs, sep=",", 
-                  file=paste(resultDirPerCohort, "av_coefs_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "av_coefs_",data_names[iCohort], 
                              ".csv", sep=""))
       
       
