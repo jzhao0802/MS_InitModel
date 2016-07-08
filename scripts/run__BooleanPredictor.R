@@ -27,4 +27,6 @@ main.arglist$idColName <- c("record_num")
 main.arglist$bTransferLearn <- F
 main.arglist$bManualCV <- F
 
+global.seed <- 1
+
 main(main.arglist)
