@@ -29,4 +29,6 @@ main.arglist$bManualCV <- F
 
 global.seed <- 1
 
+set.seed(global.seed)
+
 main(main.arglist)

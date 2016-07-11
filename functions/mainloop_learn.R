@@ -67,7 +67,7 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
 {
   cv_results_allalphas <- list()
   
-  fold_ids <- stratifyFoldIDs(y_train_val, kFoldsVal, global.seed)
+  fold_ids <- stratifyFoldIDs(y_train_val, kFoldsVal)
   
   for (iAlpha in 1:length(alphaVals))
   {
@@ -169,7 +169,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       
       # stratification for evaluation
       
-      folds <- manualStratify(y, kFoldsEval, global.seed)
+      folds <- manualStratify(y, kFoldsEval)
       
       #
       # containers 
