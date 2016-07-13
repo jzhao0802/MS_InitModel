@@ -128,8 +128,14 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
   {
     cat(paste0(data_names[iCohort], ", "))
     
-    dataset <- read.csv(paste0(data_dir, data_names[iCohort],"4model.csv"), 
-                        header=TRUE, sep=",", check.names=FALSE)
+    if(!bInvesNewVarsGroups){
+      dataset <- read.csv(paste0(data_dir, data_names[iCohort],"4model.csv"), 
+                          header=TRUE, sep=",", check.names=FALSE)
+    }else{
+      dataset <- read.csv(paste0(data_dir, data_names[iCohort],"4modelAdd", newVars, ".csv"), 
+                          header=TRUE, sep=",", check.names=FALSE)
+    }
+    
     
     resultDirPerCohort <- paste0(resultDir, data_names[iCohort], "/")
     dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
