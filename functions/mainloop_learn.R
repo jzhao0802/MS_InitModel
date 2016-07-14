@@ -144,7 +144,21 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       
       y <- dataset[, outcomeName]
       
-      X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
+      top10varsDir <- paste0("F:\\Jie\\MS\\02_Code\\MS_InitModel\\Results\\2016-07-12 14.54.21\\1\\"
+                             , data_names[iCohort]
+                             , '\\'
+                             , outcomeName
+                             , '\\')
+      
+      avRank <- read.table(paste0(top10varsDir, 'av_ranking_Cmp.csv')
+                           , sep=','
+                           , header = T
+                           , stringsAsFactors = F
+      )
+      top10Vars <- rownames(avRank)[order(avRank$x, decreasing = T)][1:10]
+      
+      X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
+        select(one_of(top10Vars))
       
 #       #
 #       # for test
