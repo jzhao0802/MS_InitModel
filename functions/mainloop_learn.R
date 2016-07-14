@@ -155,7 +155,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                            , header = T
                            , stringsAsFactors = F
       )
-      top10Vars <- rownames(avRank)[order(avRank$x, decreasing = T)][1:10]
+      top10Vars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:10]
       
       X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
         select(one_of(top10Vars))
