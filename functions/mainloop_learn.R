@@ -128,7 +128,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
   {
     cat(paste0(data_names[iCohort], ", "))
     
-    dataset <- read.csv(paste0(data_dir, data_names[iCohort],"4model.csv"), 
+    dataset <- read.csv(paste0(data_dir, data_names[iCohort],dataFile), 
                         header=TRUE, sep=",", check.names=FALSE)
     
     resultDirPerCohort <- paste0(resultDir, data_names[iCohort], "/")
@@ -144,21 +144,28 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       
       y <- dataset[, outcomeName]
       
-      top10varsDir <- paste0("F:\\Jie\\MS\\02_Code\\MS_InitModel\\Results\\2016-07-12 14.54.21\\1\\"
-                             , data_names[iCohort]
-                             , '\\'
-                             , outcomeName
-                             , '\\')
-      
-      avRank <- read.table(paste0(top10varsDir, 'av_ranking_Cmp.csv')
-                           , sep=','
-                           , header = T
-                           , stringsAsFactors = F
-      )
-      top10Vars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:10]
-      
-      X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
-        select(one_of(top10Vars))
+      if(is.null(initEnetDir)){
+        X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
+      }else{
+        top10varsDir <- paste0(initEnetDir
+                               , '1\\'
+                               # "F:\\Jie\\MS\\02_Code\\MS_InitModel\\Results\\2016-07-12 14.54.21\\1\\"
+                               , data_names[iCohort]
+                               , '\\'
+                               , outcomeName
+                               , '\\')
+        
+        avRank <- read.table(paste0(top10varsDir, 'av_ranking_Cmp.csv')
+                             , sep=','
+                             , header = T
+                             , stringsAsFactors = F
+        )
+        top10Vars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:10]
+        
+        X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
+          select(one_of(top10Vars))
+        
+      }
       
 #       #
 #       # for test
