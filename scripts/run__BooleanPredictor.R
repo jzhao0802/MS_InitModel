@@ -32,7 +32,7 @@ main.arglist$dataFileSuffix <- '4Model_VarChanged.csv'
 main.arglist$bTopVarsOnly <- T
 main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
-  "F:/Lichao/work/Projects/MultipleSclerosis/Results/2016-07-14/2016-07-14 12.30.14/"
+  "F:/Lichao/work/Projects/MultipleSclerosis/Results/2016-07-14/2016-07-14 20.48.49/"
 
 global.seed <- 1
 set.seed(global.seed)
