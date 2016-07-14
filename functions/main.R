@@ -49,17 +49,33 @@ main <- function(arglist)
   n_alphas <- length(alphaVals)
   lambda_seq <- exp(log_lambda_seq)
   
-  outcomeNames <- arglist$outcomes
+  outcomeNames <- arglist$outcomeNames
   
   data_dir <- arglist$data_dir
   if (bTransferLearn)
   {
-    cohort_names <- arglist$cohort_names
-    outcome_names <- arglist$outcome_names
+    cohortNames <- arglist$cohortNames
+    outcomeNames <- arglist$outcomeNames
   } else
   {
-    data_names <- arglist$data_names
+    cohortNames <- arglist$cohortNames
   }
+  dataFileSuffix <- arglist$dataFileSuffix 
+  
+  bTopVarsOnly <- arglist$bTopVarsOnly
+  if (bTopVarsOnly)
+  {
+    nTopVars <- arglist$nTopVars
+    initEnetDir <- arglist$initEnetDir
+    if (is.null(nTopVars) | is.null(initEnetDir))
+      stop("Error! Information missing for mode 'TopVarsOnly'.")
+  } else
+  {
+    nTopVars <- NULL
+    initEnetDir <- NULL
+  }
+    
+  
   
   idColName <- arglist$idColName
   
@@ -80,53 +96,7 @@ main <- function(arglist)
   resultDir <- paste("./Results/", timeStamp, "/", sep = '')
   dir.create(resultDir, showWarnings = TRUE, recursive = TRUE, mode = "0777")
   
-#   # check the seed working
-#   set.seed(seed=seed)
-#   
-# folds4repeats <- lapply(1:n_repeats, function(i_repeat){
-#     cat(paste0(data_names[iCohort], ", "))
-#     
-#     dataset <- read.csv(paste0(data_dir, data_names[iCohort],"4model.csv"), 
-#                         header=TRUE, sep=",", check.names=FALSE)
-#     
-#     resultDirPerCohort <- paste0(resultDir, data_names[iCohort], "/")
-#     dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
-#     
-#     cat(paste0(outcomeName, "\n"))
-#     
-#     resultDirPerOutcome <- paste0(resultDirPerCohort, outcomeName, "/")
-#     dir.create(resultDirPerOutcome, showWarnings = TRUE, recursive = TRUE, mode = "0777")
-#     
-#     
-#     y <- dataset[, outcomeName]
-#     
-#     X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
-#     
-# 
-#     X <- data.matrix(X)
-#     
-# 
-#     n_data = nrow(X)
-#     
-#     
-#     # stratification for evaluation
-#     
-#     # folds <- manualStratify(y, kFoldsEval, global.seed)
-#     ids <- 1:k_folds
-# #     set.seed(seed=seed)
-#     cat(sample(1:10, 5), '\n\n')
-#     ids_every_pos <- sample(rep(ids, length.out=sum(y==1)))
-#     ids_every_neg <- sample(rep(ids, length.out=sum(y!=1)))
-#     
-#     ids_every_datum <- rep(-1, length(y))
-#     ids_every_datum[which(y==1)] <- ids_every_pos
-#     ids_every_datum[which(y!=1)] <- ids_every_neg
-#     return(ids_every_datum)
-#     
-#   })
-# folds4repeatsDf <- ldply(folds4repeats, quickdf)
-#  sum(apply(folds4repeatsDf, 2, function(x)length(unique(x))) >1)
-#   # 
+
   for (i_repeat in 1:n_repeats)
   {
     resultDir_thisrepeat <- paste(resultDir, i_repeat, "/", sep = '')
@@ -135,14 +105,18 @@ main <- function(arglist)
     if (bTransferLearn)
       mainloop_transferlearn(bParallel, kFoldsEval, kFoldsVal, alphaVals, 
                              log_lambda_seq, bClassWeights, 
-                             n_alphas, lambda_seq, data_dir, cohort_names, 
-                             outcome_names, resultDir_thisrepeat)
+                             n_alphas, lambda_seq, data_dir, cohortNames, 
+                             outcomeNames, resultDir_thisrepeat)
     else
-      mainloop_learn(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
-                     log_lambda_seq, bClassWeights, 
-                     n_alphas, lambda_seq, data_dir, data_names, outcomeNames,
-                     idColName, 
-                     resultDir_thisrepeat)
+      mainloop_learn(bParallel=bParallel, bManualCV=bManualCV, kFoldsEval=kFoldsEval, 
+                     kFoldsVal=kFoldsVal, alphaVals=alphaVals, 
+                     log_lambda_seq=log_lambda_seq, bClassWeights=bClassWeights, 
+                     n_alphas=n_alphas, lambda_seq=lambda_seq, data_dir=data_dir, 
+                     dataFileSuffix = dataFileSuffix,
+                     cohortNames=cohortNames, outcomeNames=outcomeNames,
+                     idColName=idColName, bTopVarsOnly=bTopVarsOnly, 
+                     nTopVars=nTopVars, initEnetDir=initEnetDir,
+                     resultDir=resultDir_thisrepeat)
   }
   
   

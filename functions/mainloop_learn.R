@@ -116,22 +116,24 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
 
 mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                            log_lambda_seq, bClassWeights, 
-                           n_alphas, lambda_seq, data_dir, data_names, outcomeNames,
+                           n_alphas, lambda_seq, data_dir, dataFileSuffix, 
+                           cohortNames, outcomeNames,
                            idColName,
+                           bTopVarsOnly, nTopVars, initEnetDir,
                            resultDir)
 {
   fileAvAUCs_test <- file(paste(resultDir, "AvAUCs_test.csv", sep=""), "w")
   fileAvAUCs_train <- file(paste(resultDir, "AvAUCs_train.csv", sep=""), "w")
   
   
-  for (iCohort in 1:length(data_names))
+  for (iCohort in 1:length(cohortNames))
   {
-    cat(paste0(data_names[iCohort], ", "))
+    cat(paste0(cohortNames[iCohort], ", "))
     
-    dataset <- read.csv(paste0(data_dir, data_names[iCohort],dataFile), 
+    dataset <- read.csv(paste0(data_dir, cohortNames[iCohort], dataFileSuffix), 
                         header=TRUE, sep=",", check.names=FALSE)
     
-    resultDirPerCohort <- paste0(resultDir, data_names[iCohort], "/")
+    resultDirPerCohort <- paste0(resultDir, cohortNames[iCohort], "/")
     dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
     
     for (outcomeName in outcomeNames)
@@ -144,38 +146,30 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       
       y <- dataset[, outcomeName]
       
-      if(is.null(initEnetDir)){
+      if(!bTopVarsOnly){
         X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
       }else{
-        top10varsDir <- paste0(initEnetDir
-                               , '1\\'
-                               # "F:\\Jie\\MS\\02_Code\\MS_InitModel\\Results\\2016-07-12 14.54.21\\1\\"
-                               , data_names[iCohort]
-                               , '\\'
-                               , outcomeName
-                               , '\\')
+        topVarsDir <- paste0(initEnetDir, '1\\', cohortNames[iCohort], 
+                               '\\', outcomeName, '\\')
         
-        avRank <- read.table(paste0(top10varsDir, 'av_ranking_Cmp.csv')
-                             , sep=','
-                             , header = T
-                             , stringsAsFactors = F
-        )
-        top10Vars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:10]
+        avRank <- read.table(paste0(topVarsDir, "av_ranking_", cohortNames[iCohort], ".csv"), 
+                             sep=',', header = T, stringsAsFactors = F)
+        topVars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:nTopVars]
         
         X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
-          select(one_of(top10Vars))
+          select(one_of(topVars))
         
       }
       
 #       #
 #       # for test
-#       X <- dplyr::select(dataset, -one_of(c("B2B", "B2Fir", "B2Sec")))
-#       X <- dplyr::select(dataset, -matches("dmts"))
+#       X <- dplyr::select(X, -one_of(c("B2B", "B2Fir", "B2Sec")))
+#       X <- dplyr::select(X, -matches("dmts"))
       
       X <- data.matrix(X)
       
       write.table(cbind(y,X), sep=",", 
-                  file=paste(resultDirPerOutcome, data_names[iCohort],"_data_for_model", 
+                  file=paste(resultDirPerOutcome, cohortNames[iCohort],"_data_for_model", 
                              ".csv", sep=""), row.names=F)
       
       
@@ -297,7 +291,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       pred <- 
         prediction(predictions=predprobs_alldata[, 1], labels=y)
       perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-      png(filename=paste(resultDirPerOutcome, data_names[iCohort], "_roc.png", sep=""))
+      png(filename=paste(resultDirPerOutcome, cohortNames[iCohort], "_roc.png", sep=""))
       plot(perf, col=rainbow(10))
       dev.off()
       
@@ -310,41 +304,41 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       # save all the predictions (of every imputation version and the pooled version)
       
       write.table(predprobs_alldata, sep=",", 
-                  file=paste(resultDirPerOutcome, data_names[iCohort],"_probs.csv", sep=""), col.names=NA)
+                  file=paste(resultDirPerOutcome, cohortNames[iCohort],"_probs.csv", sep=""), col.names=NA)
       
       write.table(params_allfolds, sep=",", 
-                  file=paste(resultDirPerOutcome,data_names[iCohort],"_params.csv", sep=""), col.names=NA)
+                  file=paste(resultDirPerOutcome,cohortNames[iCohort],"_params.csv", sep=""), col.names=NA)
       
       # average ranking
       
       write.table(ranks_allalphas_folds, sep=",", 
-                  file=paste(resultDirPerOutcome, "rankings_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "rankings_",cohortNames[iCohort], 
                              ".csv", sep=""))
       
       av_ranking <- matrix(rowMeans(ranks_allalphas_folds), ncol=1)
       rownames(av_ranking) <- rownames(ranks_allalphas_folds)
       av_ranking <- av_ranking[order(av_ranking),]
       write.table(av_ranking, sep=",", 
-                  file=paste(resultDirPerOutcome, "av_ranking_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "av_ranking_",cohortNames[iCohort], 
                              ".csv", sep=""))
       
       # average coefficients
       
       write.table(coefs_allalphas_folds, sep=",", 
-                  file=paste(resultDirPerOutcome, "coefs_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "coefs_",cohortNames[iCohort], 
                              ".csv", sep=""))
       
       av_coefs <- matrix(rowMeans(coefs_allalphas_folds), ncol=1)
       rownames(av_coefs) <- rownames(coefs_allalphas_folds)
       write.table(av_coefs, sep=",", 
-                  file=paste(resultDirPerOutcome, "av_coefs_",data_names[iCohort], 
+                  file=paste(resultDirPerOutcome, "av_coefs_",cohortNames[iCohort], 
                              ".csv", sep=""))
       
       
-      writeLines(paste(data_names[iCohort], outcomeName, 
+      writeLines(paste(cohortNames[iCohort], outcomeName, 
                        paste(colMeans(auc_train_allfolds),collapse=","), 
                        sep=","), fileAvAUCs_train)
-      writeLines(paste(data_names[iCohort], outcomeName, auc_test, sep=","), 
+      writeLines(paste(cohortNames[iCohort], outcomeName, auc_test, sep=","), 
                  fileAvAUCs_test)
     }
     
