@@ -1,12 +1,13 @@
 
 library(dplyr)
-inDir <- "F:\\Lichao\\work\\Projects\\MultipleSclerosis\\Results\\2016-07-11\\2016-07-11 20.07.54\\"
+inDir <- "F:\\Lichao\\work\\Projects\\MultipleSclerosis\\Results\\2016-07-12\\2016-07-12 15.43.48\\"
 outDir <- paste0(inDir, 'mergeCateg/')
+inFile <- "Cmp4Model_VarChanged.csv"
 
 if(!dir.exists(outDir))
   dir.create(outDir, showWarnings = T)
 
-dtOrg <- read.table(paste0(inDir, 'Cmp4Model.csv')
+dtOrg <- read.table(paste0(inDir, inFile)
                     , sep=','
                     , header = T
                     , stringsAsFactors = F)
