@@ -189,7 +189,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       #
       # containers 
       
-      predprobs_alldata <- matrix(data=-1, nrow=n_data, ncol=1)
+      predprobs_alldata <- matrix(data=-1, nrow=n_data, ncol=2)
       
       auc_train_allfolds <- 
         matrix(data=-1, nrow=kFoldsEval, ncol=1)
@@ -276,7 +276,9 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         
         predprobs_alldata[test_ids, 1] <- 
           predprobs_test
-        
+        # keep the lables of the test data of eval fold i
+        predprobs_alldata[test_ids, 2] <- 
+          y_test
         # 
         
         params_allfolds[iFold, 1] <- best_alpha
@@ -304,7 +306,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       # save all the predictions (of every imputation version and the pooled version)
       
       write.table(predprobs_alldata, sep=",", 
-                  file=paste(resultDirPerOutcome, cohortNames[iCohort],"_probs.csv", sep=""), col.names=NA)
+                  file=paste(resultDirPerOutcome, cohortNames[iCohort],"_probsAndLabels.csv", sep=""), col.names=NA)
       
       write.table(params_allfolds, sep=",", 
                   file=paste(resultDirPerOutcome,cohortNames[iCohort],"_params.csv", sep=""), col.names=NA)
