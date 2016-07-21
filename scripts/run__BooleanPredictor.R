@@ -29,10 +29,10 @@ main.arglist$bManualCV <- F
 
 main.arglist$dataFileSuffix <- '4Model.csv'
 
-main.arglist$bTopVarsOnly <- F
+main.arglist$bTopVarsOnly <- T
 main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
-  "F:/Lichao/work/Projects/MultipleSclerosis/Results/2016-07-14/2016-07-14 20.48.49/"
+  "F:/Jie/MS/03_Result/2016-07-21/2016-07-21 04.56.35/"
 
 global.seed <- 1
 set.seed(global.seed)
