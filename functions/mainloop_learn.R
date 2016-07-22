@@ -218,14 +218,14 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         trainIds4EvalFolds[[iFold]] <- train_val_ids
         if(iFold==length(folds)){
           saveRDS(trainIds4EvalFolds, paste0(resultDirPerOutcome, 'trainIds4EvalFolds.RDS'))
-          break
+          # break
         }
-        if(iCohort==length(cohortNames) & 
-           outcomeName==outcomeNames[length(outcomeNames)] &
-           iFold==length(folds)){
-          stop('for now all the training ids have been saved in the corresponding folders!\n\n')
-        }
-        next
+#         if(iCohort==length(cohortNames) & 
+#            outcomeName==outcomeNames[length(outcomeNames)] &
+#            iFold==length(folds)){
+#           stop('for now all the training ids have been saved in the corresponding folders!\n\n')
+#         }
+#         next
         test_ids <- which(!((1:n_data) %in% train_val_ids))
         X_train_val <- X[train_val_ids,]
         X_test <- X[-train_val_ids,]
