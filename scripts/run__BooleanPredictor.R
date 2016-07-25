@@ -11,16 +11,16 @@ main.arglist$nCores2Use <- detectCores() - 1
 main.arglist$kFoldsEval <- 5
 main.arglist$kFoldsVal <- 5
 main.arglist$alphaVals <- seq(0,1,length.out=21)
-main.arglist$log_lambda_seq <- c(seq(log(1e-4),log(1e4),length.out=100), -1e5)
+main.arglist$log_lambda_seq <- c(seq(log(1e-20),log(1e4),length.out=100))
 main.arglist$bClassWeights <- T
 main.arglist$n_repeats <- 1
 
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-21/2016-07-21 04.45.38/"
-# main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3",
-#                            "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
-main.arglist$outcomeNames <- c("edssconf3")
+main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3",
+                           "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
+# main.arglist$outcomeNames <- c("edssconf3")
 
-main.arglist$cohortNames <- c("Cmp")
+main.arglist$cohortNames <- c("Cmp", "BConti", "B2B", "B2Fir", "B2Sec")
 
 main.arglist$idColName <- c("record_num")
 
