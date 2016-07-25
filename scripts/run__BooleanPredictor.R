@@ -34,6 +34,7 @@ main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
   "F:/Jie/MS/03_Result/2016-07-21/2016-07-21 04.56.35/"
 
+bTestLambda0 <- T
 global.seed <- 1
 set.seed(global.seed)
 

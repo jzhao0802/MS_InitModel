@@ -265,7 +265,9 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                                alpha=best_alpha, lambda=lambda_seq)
         
         # test immediately on the training
-        
+        if(bTestLambda0==T){
+          best_lambda <- 0
+        }
         predprobs_train <- 
           predict(fit_glmnet, newx = X_train_val, type="response", s=best_lambda)
         rocValues_train <- 
