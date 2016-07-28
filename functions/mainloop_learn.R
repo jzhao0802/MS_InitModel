@@ -69,8 +69,10 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
   
   fold_ids <- stratifyFoldIDs(y_train_val, kFoldsVal)
   
+#   lapply(1:5, function(ifold)table(y_train_val[fold_ids==ifold]))
   for (iAlpha in 1:length(alphaVals))
   {
+    # cat(alphaVals[iAlpha], '..')
     if (bClassWeights)
       cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial",
                        type.measure="auc", alpha=alphaVals[iAlpha],
@@ -117,7 +119,7 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
 mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                            log_lambda_seq, bClassWeights, 
                            n_alphas, lambda_seq, data_dir, dataFileSuffix, 
-                           cohortNames, outcomeNames,
+                           cohortNames, outcomeNames, AllOutcomes4Remove,
                            idColName,
                            bTopVarsOnly, nTopVars, initEnetDir,
                            resultDir)
@@ -128,11 +130,15 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
   
   for (iCohort in 1:length(cohortNames))
   {
-    cat(paste0(cohortNames[iCohort], ", "))
+    cat(paste0(cohortNames[iCohort], ", \n"))
     
     dataset <- read.csv(paste0(data_dir, cohortNames[iCohort], dataFileSuffix), 
                         header=TRUE, sep=",", check.names=FALSE)
-    
+    # var1 <- names(dataset)
+#     # remove the constant variables
+#     Bconstant <- unlist(lapply(names(dataset), function(var)length(table(dataset[, var]))==1))
+#     dataset <- dataset[, !Bconstant]
+#     var2 <- names(dataset)
     resultDirPerCohort <- paste0(resultDir, cohortNames[iCohort], "/")
     dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
     
@@ -147,7 +153,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       y <- dataset[, outcomeName]
       
       if(!bTopVarsOnly){
-        X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
+        X <- dplyr::select(dataset, -one_of(c(AllOutcomes4Remove, idColName)))
       }else{
         topVarsDir <- paste0(initEnetDir, '1\\', cohortNames[iCohort], 
                                '\\', outcomeName, '\\')
@@ -156,7 +162,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                              sep=',', header = T, stringsAsFactors = F)
         topVars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:nTopVars]
         
-        X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
+        X <- dplyr::select(dataset, -one_of(c(AllOutcomes4Remove, idColName))) %>%
           select(one_of(topVars))
         
       }
@@ -236,18 +242,21 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         
         weight_vec <- computeWeights(y_train_val)
         
-        if (bManualCV)
+        if (bManualCV){
           selected_alpha_lambda <- 
-          selectAlphaLambda_ManualCV(alphaVals, X_train_val, y_train_val, 
-                                     weight_vec, bClassWeights, kFoldsVal, 
-                                     lambda_seq, bParallel, iFold, n_alphas,
-                                     coefs_allalphas_folds, ranks_allalphas_folds)
-        else
+            selectAlphaLambda_ManualCV(alphaVals, X_train_val, y_train_val, 
+                                       weight_vec, bClassWeights, kFoldsVal, 
+                                       lambda_seq, bParallel, iFold, n_alphas,
+                                       coefs_allalphas_folds, ranks_allalphas_folds)
+          
+        }else{
           selected_alpha_lambda <- 
-          selectAlphaLambda_BuiltInCV(alphaVals, X_train_val, y_train_val, 
-                                      weight_vec, bClassWeights, kFoldsVal, 
-                                      lambda_seq, bParallel, iFold, n_alphas,
-                                      coefs_allalphas_folds, ranks_allalphas_folds)
+            selectAlphaLambda_BuiltInCV(alphaVals, X_train_val, y_train_val, 
+                                        weight_vec, bClassWeights, kFoldsVal, 
+                                        lambda_seq, bParallel, iFold, n_alphas,
+                                        coefs_allalphas_folds, ranks_allalphas_folds)
+          
+        }
         
         best_alpha <- selected_alpha_lambda$alpha
         best_lambda <- selected_alpha_lambda$lambda
@@ -256,13 +265,16 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         
         # train with the selected params
         
-        if (bClassWeights)
+        if (bClassWeights){
           fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
                                weights=weight_vec,
                                alpha=best_alpha, lambda=lambda_seq)
-        else
+          
+        }else{
           fit_glmnet <- glmnet(X_train_val,y_train_val, family="binomial", 
                                alpha=best_alpha, lambda=lambda_seq)
+          
+        }
         
         # test immediately on the training
         
