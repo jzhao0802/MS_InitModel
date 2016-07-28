@@ -18,12 +18,11 @@ main.arglist$n_repeats <- 1
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-27/2016-07-27 08.40.45/"
 main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3",
                            "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
-# main.arglist$outcomeNames <- c("edssconf3")
-main.arglist$AllOutcomes4Remove <- c("relapse_fu_any_01", "edssprog", "edssconf3",
-                           "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
-
-main.arglist$cohortNames <- c("BConti", "B2B", "B2Fir", "B2Sec")
-# main.arglist$cohortNames <- c("Cmp")
+main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssconf3")
+# main.arglist$AllOutcomes4Remove <- c("relapse_fu_any_01", "edssprog", "edssconf3",
+#                            "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
+# main.arglist$cohortNames <- c("BConti", "B2B", "B2Fir", "B2Sec")
+main.arglist$cohortNames <- c("BConti", "B2Fir")
 
 main.arglist$idColName <- c("record_num")
 
@@ -40,7 +39,7 @@ main.arglist$initEnetDir <-
 global.seed <- 1
 set.seed(global.seed)
 
-Btest=F
+Btest=T
 
 if(Btest){
   main.arglist$log_lambda_seq <- main.arglist$log_lambda_seq[1:5]

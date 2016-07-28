@@ -69,10 +69,11 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
   
   fold_ids <- stratifyFoldIDs(y_train_val, kFoldsVal)
   
-#   lapply(1:5, function(ifold)table(y_train_val[fold_ids==ifold]))
+   levs <- unlist(lapply(1:5, function(ifold)length(table(y_train_val[fold_ids==ifold]))==2))
+   cat("levels:", levs)
   for (iAlpha in 1:length(alphaVals))
   {
-    # cat(alphaVals[iAlpha], '..')
+    cat("alpha", alphaVals[iAlpha], '..')
     if (bClassWeights)
       cv.fit=cv.glmnet(X_train_val, y_train_val, family="binomial",
                        type.measure="auc", alpha=alphaVals[iAlpha],
@@ -83,6 +84,7 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
                        type.measure="auc", alpha=alphaVals[iAlpha],
                        nfolds=kFoldsVal, foldid=fold_ids,
                        lambda=lambda_seq, parallel=bParallel)
+    cat("x1")
     cv_result_auc <- cv.fit$cvm[which(cv.fit$lambda == cv.fit$lambda.min)]
     cv_results_allalphas[[iAlpha]] <- list(cv.fit, cv_result_auc)
     
@@ -257,7 +259,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                                         coefs_allalphas_folds, ranks_allalphas_folds)
           
         }
-        
+        cat("a0")
         best_alpha <- selected_alpha_lambda$alpha
         best_lambda <- selected_alpha_lambda$lambda
         coefs_allalphas_folds <- selected_alpha_lambda$coefs_allalphas_folds
@@ -275,7 +277,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                                alpha=best_alpha, lambda=lambda_seq)
           
         }
-        
+        cat("a")
         # test immediately on the training
         
         predprobs_train <- 
@@ -286,7 +288,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
               direction="<")
         auc_train_allfolds[iFold, 1] <- rocValues_train$auc
         
-        
+        cat("b")
         
         
         # test
@@ -294,7 +296,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         predprobs_test <- 
           predict(fit_glmnet, newx = X_test, type="response", s=best_lambda)
         
-        
+        cat("c")
         
         # keep the prediction probs
         
@@ -304,7 +306,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         predprobs_alldata[test_ids, 2] <- 
           y_test
         # 
-        
+        cat("d")
         params_allfolds[iFold, 1] <- best_alpha
         params_allfolds[iFold, 2] <- best_lambda
         rownames(params_allfolds)[iFold] <- paste("fold_", iFold, sep="")
@@ -316,6 +318,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       
       pred <- 
         prediction(predictions=predprobs_alldata[, 1], labels=y)
+      cat('e\n')
       perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
       png(filename=paste(resultDirPerOutcome, cohortNames[iCohort], "_roc.png", sep=""))
       plot(perf, col=rainbow(10))
