@@ -69,7 +69,7 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
   
   fold_ids <- stratifyFoldIDs(y_train_val, kFoldsVal)
   
-   levs <- unlist(lapply(1:5, function(ifold)length(table(y_train_val[fold_ids==ifold]))==2))
+   levs <- all(unlist(lapply(1:5, function(ifold)length(table(y_train_val[fold_ids==ifold]))==2)))
    cat("levels:", levs)
   for (iAlpha in 1:length(alphaVals))
   {
