@@ -63,7 +63,6 @@ runRF_grp <- function(grpId, cohort, resultDir, outcome)
   # define container
   pred_rf_ts <- numeric(length(y))
   
-  runRF_eval(evalFold, newGrpVarsFlag)
   sfInit(parallel=TRUE, cpus=num_pros, type='SOCK')
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
@@ -91,13 +90,13 @@ runRF_grp <- function(grpId, cohort, resultDir, outcome)
 runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDir){
   
   y <- data[, outcome]
+  data$y <- y
+  data <- data %>% select(-one_of(outcomeNamesAll))
+  
   set.seed(1)
   folds <- manualStratify(y, 2)
   data <- data[folds[[1]], ]
-  data$y <- y
-  data <- data %>% select(-one_of(setdiff(outcomeNamesAll, outcome)))
-  runRF_grp(grpId, cohort, resultDir, outcome)
-  
+
   sfInit(parallel=TRUE, cpus=num_pros, type='SOCK')
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")

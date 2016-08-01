@@ -1,14 +1,11 @@
-library(glmnet)
 library(pROC)
 library(ROCR)
-library(doParallel)
 library(compiler)
+library(snowfall)
 
 source("functions/computeWeights.R")
-source("functions/manualStratify.R")
-source("functions/manualCV.R")
-source("functions/mainloop_learn.R")
-source("functions/mainloop_transferlearn.R")
+source("functions/funs_RF.R")
+source("functions/main_RF.R")
 
 #
 
