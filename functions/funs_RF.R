@@ -41,9 +41,9 @@ runRF_eval <- function(iFold, newGrpVarsFlag){
 runRF_grp <- function(grpId, cohort, resultDir, outcome)
 {
   
-#   resultDir_thisGrp <- paste(resultDir, outcome, "/", newGrpVarsLst[grpId], '/', sep = '')
-#   
-#   dir.create(resultDir_thisGrp, showWarnings = TRUE, recursive = TRUE, mode = "0777")
+  resultDir_thisGrp <- paste(resultDir, outcome, "/", newGrpVarsLst[grpId], '/', sep = '')
+  
+  dir.create(resultDir_thisGrp, showWarnings = TRUE, recursive = TRUE, mode = "0777")
   
   newGrpVars <- newGrpVarsLst[[grpId]][-1]
   
@@ -68,7 +68,6 @@ runRF_grp <- function(grpId, cohort, resultDir, outcome)
   sfSource("functions/manualStratify.R")
   
   sfExport('X', 'y', 'evalFolds')
-  sfExport('createCurve', 'grid_search_v2')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
@@ -101,12 +100,14 @@ runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDir){
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
   
-  sfExport('data', 'newGrpVarsLst')
-  sfExport('createCurve', 'grid_search_v2')
-  sfClusterEval(library("glmnet"))
+  sfExport('data', 'newGrpVarsLst', 'resultDir', "outcome")
+  sfExport('manualStratify', 'runRF_eval')
+  sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
   sfClusterEval(library("dplyr"))
+  sfClusterEval(library("snowfall"))
+  
   temp <- sfClusterApplyLB(1:length(newGrpVarsLst), runRF_grp, cohort, resultDir, outcome)
   sfStop()
   grp_auc_tr_ts <- ldply(temp, quickdf)
