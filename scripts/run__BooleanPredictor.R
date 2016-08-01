@@ -35,6 +35,18 @@ main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
   "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
 
+bRF <- T
+prior_prob <- c(0.3, 0.5, 0.6, 0.03, 0.05, 0.07)
+main.arglist$class_weight_list <- list(
+  # NULL
+  # , c('0'=1, '1'=1)
+  c('0'=1-prior_prob[1], '1'=prior_prob[1])
+  , c('0'=1-prior_prob[2], '1'=prior_prob[2])
+  , c('0'=1-prior_prob[3], '1'=prior_prob[3])
+  , c('0'=1-prior_prob[4], '1'=prior_prob[4])
+  , c('0'=1-prior_prob[5], '1'=prior_prob[5])
+  , c('0'=1-prior_prob[6], '1'=prior_prob[6])
+)
 global.seed <- 1
 set.seed(global.seed)
 
