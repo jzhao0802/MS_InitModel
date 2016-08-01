@@ -9,6 +9,10 @@ runRF_eval <- function(iFold){
   y_train_val <- y[train_val_ids]
   y_test <- y[-train_val_ids]
   
+  bNum <- sapply(as.data.frame(X_train_val), is.numeric)
+  charVars <- colnames(X_train_val)[!bNum]
+  cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' evalFold-', iFold
+      , ' character-', paste0(charVars, collapse = ','), '!\n')
   
   RF_fit <- randomForest(x=X_train_val,y=as.factor(y_train_val), 
                          ntree=ntree,
@@ -54,10 +58,16 @@ runRF_grp <- function(grpId, cohort, resultDirPerCohort, outcome)
   dir.create(resultDir_thisGrp, showWarnings = TRUE, recursive = TRUE, mode = "0777")
   
   
-  if(newGrpVars==""){
+  if(all(newGrpVars=="")){
     data4RF <- data
   }else{
-    data4RF <- cbind(data, raw_data[data$record_num, newGrpVars])
+    added_df <- as.data.frame(t(ldply(lapply(newGrpVars, function(var){
+      vct <- raw_data[data$record_num, var]
+      vct[is.na(vct)] <- ifelse(is.numeric(vct), 99999, 'missing')
+      return(vct)
+    }), quickdf)))
+    names(added_df) <- newGrpVars
+    data4RF <- cbind(data, added_df)
     
   }
     

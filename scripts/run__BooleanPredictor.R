@@ -11,8 +11,8 @@ main.arglist$nCores2Use <- c(n.outcome=1, n.grp=7, n.evlFolds=5)
 main.arglist$kFoldsEval <- 5
 
 main.arglist$wt <- c("0"=1, "1"=1)
-main.arglist$ntree <- 10
-main.arglist$mtry <- 2
+main.arglist$ntree <- 100
+main.arglist$mtry <- 8
 
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
 main.arglist$outcomeNamesAll <- c("relapse_fu_any_01", "edssprog", "edssconf3",
@@ -30,19 +30,23 @@ main.arglist$idColName <- c("record_num")
 
 main.arglist$dataFileSuffix <- '4Model.csv'
 
-main.arglist$bTopVarsOnly <- F
-main.arglist$nTopVars <- 10
-main.arglist$initEnetDir <- 
-  "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
 
 raw_data <- read.table("F:/Jie/MS/01_Data/MS_decsupp_analset_20160701.csv"
                        , sep=','
                        , header = T
                        , stringsAsFactors = T)
 vars <- names(raw_data)
+# 
+# Qc
+# QC <- lapply(main.arglist$newGrpVarsLst[-1], function(vs){
+#   dt <- raw_data[, vs[-1]]
+#   cls <- ifelse(ncol(dt)>1, unique(apply(dt, 2, class)), class(dt))
+#   return(cls)
+# })
+# names(QC) <- unlist(lapply(main.arglist$newGrpVarsLst[-1], function(x)x[1]))
 
-raw_data$lookback_days <- as.Date(as.character(raw_data$idx_dt), format="%Y/%m/%d")-
-  as.Date(as.character(raw_data$firstdt), format="%Y/%m/%d")
+raw_data$lookback_days <- as.numeric(as.Date(as.character(raw_data$idx_dt), format="%Y/%m/%d")-
+  as.Date(as.character(raw_data$firstdt), format="%Y/%m/%d"))
 
 main.arglist$newGrpVarsLst <- list(
   c("base variables"
@@ -84,7 +88,7 @@ main.arglist$newGrpVarsLst <- list(
   , c("Number of relapses not treated"
       , grep("^relapse_pre\\d_trtn$", vars, value=T, ignore.case = T))
   
-  , c("Visit reasons "
+  , c("Visit reasons"
       , grep("^pre\\d_visreas_\\w+$", vars, value=T, ignore.case = T))
   
   , c("Degree of disability recorded"
@@ -102,8 +106,8 @@ main.arglist$newGrpVarsLst <- list(
   
 )
 
-saveRDS(main.arglist$newGrpVarsLst
-        , paste0("F:/Jie/MS/01_Data/newGrpVarsLst.RDS"))
+# saveRDS(main.arglist$newGrpVarsLst
+#         , paste0("F:/Jie/MS/01_Data/newGrpVarsLst.RDS"))
 
 global.seed <- 1
 set.seed(global.seed)
