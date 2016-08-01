@@ -1,21 +1,18 @@
-runRF_eval <- function(iFold, newGrpVarsFlag){
+runRF_eval <- function(iFold){
   cat(paste(iFold, "..", sep=""))
   
   train_val_ids <- evalFolds[[iFold]]
   
-  test_ids <- which(!((1:nrow(data4RF)) %in% train_val_ids))
+  test_ids <- which(!((1:nrow(X)) %in% train_val_ids))
   X_train_val <- X[train_val_ids,]
   X_test <- X[-train_val_ids,]
   y_train_val <- y[train_val_ids]
   y_test <- y[-train_val_ids]
   
-  # compute weights
   
-  weight <- main.arglist$wt
-  
-  RF_fit <- randomForest(x=x_train_val,y=y_train_val, 
-                         ntree=main.arglist$ntree,
-                         mtry=main.arglist$mtry,
+  RF_fit <- randomForest(x=X_train_val,y=as.factor(y_train_val), 
+                         ntree=ntree,
+                         mtry=mtry,
                          #                              nodesize=ns, 
                          #importance=T,
                          #                              replace=replace,
@@ -25,31 +22,45 @@ runRF_eval <- function(iFold, newGrpVarsFlag){
                          classwt = wt
   ) 
   
-  pred_rf_tr <- predict(RF_fit, X_train_val, type='prob')
-  pred_rf_ts[test_ids] <<- predict(RF_fit, X_ts, type='prob')
+  cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' evalFold-', iFold, ' RF fit end!\n')
+  pred_rf_tr <- predict(RF_fit, X_train_val, type='prob')[, 2]
+  cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' evalFold-', iFold, ' predict on training end!\n')
+  
+  pred_rf_ts[test_ids] <<- predict(RF_fit, X_test, type='prob')[, 2]
+  cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' evalFold-', iFold, ' predict on test end!\n')
   
   rocValues_train <- 
     roc(response=as.vector(y_train_val), 
         predictor=as.vector(pred_rf_tr),
         direction="<")
   auc_train <- rocValues_train$auc
+  cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' get auc on training end!\n')
+  
   
   return(auc_train)
 }
 
 
-runRF_grp <- function(grpId, cohort, resultDir, outcome)
+runRF_grp <- function(grpId, cohort, resultDirPerCohort, outcome)
 {
   
-  resultDir_thisGrp <- paste(resultDir, outcome, "/", newGrpVarsLst[grpId], '/', sep = '')
-  
-  dir.create(resultDir_thisGrp, showWarnings = TRUE, recursive = TRUE, mode = "0777")
   
   newGrpVars <- newGrpVarsLst[[grpId]][-1]
   
   newGrpVarsFlag <- newGrpVarsLst[[grpId]][1]
   
-  data4RF <- cbind(data, raw_data[data$record_num, newGrpVars])
+  resultDir_thisGrp <- paste(resultDirPerCohort, outcome, "/", newGrpVarsFlag, '/', sep = '')
+  
+  dir.create(resultDir_thisGrp, showWarnings = TRUE, recursive = TRUE, mode = "0777")
+  
+  
+  if(newGrpVars==""){
+    data4RF <- data
+  }else{
+    data4RF <- cbind(data, raw_data[data$record_num, newGrpVars])
+    
+  }
+    
   
   X <- data4RF[, -match("y", names(data4RF))]
   # stratification for evaluation
@@ -63,14 +74,16 @@ runRF_grp <- function(grpId, cohort, resultDir, outcome)
   # define container
   pred_rf_ts <- numeric(length(y))
   
-  sfInit(parallel=TRUE, cpus=num_pros, type='SOCK')
+  sfInit(parallel=TRUE, cpus=nCore2Use4Eval, type='SOCK')
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
   
-  sfExport('X', 'y', 'evalFolds')
+  sfExport('X', 'y', 'evalFolds', 'wt', 'ntree', 'mtry', 'pred_rf_ts', 'traceFile', 'outcome'
+           , 'newGrpVarsFlag')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
+  sfClusterEval(library("pROC"))
   sfClusterEval(library("dplyr"))
   auc_tr_allEvalFolds <- unlist(sfClusterApplyLB(1:kFoldsEval, runRF_eval))
   sfStop()
@@ -81,12 +94,19 @@ runRF_grp <- function(grpId, cohort, resultDir, outcome)
         predictor=as.vector(pred_rf_ts),
         direction="<")
   auc_test <- rocValues_test$auc
-  return(c(group=newGrpVarsFlag, auc_tr=auc_tr_avg_acrossEvalFolds, auc_ts=auc_test))
+  cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' get auc on test end!\n')
+  
+  oneGrp_auc_tr_ts <- c(group=newGrpVarsFlag, auc_tr=auc_tr_avg_acrossEvalFolds, auc_ts=auc_test)
+  write.table(oneGrp_auc_tr_ts, paste0(resultDirPerCohort, 'auc_tr_ts_', outcome, '_', newGrpVarsFlag)
+              , sep=","
+              , row.names = T)
+  
+  return(oneGrp_auc_tr_ts)
   
 }
 
 
-runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDir){
+runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDirPerCohort){
   
   y <- data[, outcome]
   data$y <- y
@@ -95,20 +115,23 @@ runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDir){
   set.seed(1)
   folds <- manualStratify(y, 2)
   data <- data[folds[[1]], ]
-
-  sfInit(parallel=TRUE, cpus=num_pros, type='SOCK')
+  cat(file=traceFile, append = T, "parallel on grps of outcome-", outcome, " starts!\n")
+  
+  sfInit(parallel=TRUE, cpus=nCore2Use4Grp, type='SOCK')
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
   
-  sfExport('data', 'newGrpVarsLst', 'resultDir', "outcome")
+  sfExport('data', 'newGrpVarsLst', 'resultDirPerCohort', "outcome", 'nCore2Use4Eval', 'kFoldsEval'
+           , 'wt', 'ntree', 'mtry', 'traceFile', 'raw_data')
   sfExport('manualStratify', 'runRF_eval')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
   sfClusterEval(library("dplyr"))
+  sfClusterEval(library("pROC"))
   sfClusterEval(library("snowfall"))
   
-  temp <- sfClusterApplyLB(1:length(newGrpVarsLst), runRF_grp, cohort, resultDir, outcome)
+  temp <- sfClusterApplyLB(1:length(newGrpVarsLst), runRF_grp, cohort, resultDirPerCohort, outcome)
   sfStop()
   grp_auc_tr_ts <- ldply(temp, quickdf)
   names(grp_auc_tr_ts) <- c('Group', "AUC_on_training", "AUC_on_test")
