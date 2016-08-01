@@ -30,8 +30,10 @@ runRF_eval <- function(iFold){
   pred_rf_tr <- predict(RF_fit, X_train_val, type='prob')[, 2]
   cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' evalFold-', iFold, ' predict on training end!\n')
   
-  pred_rf_ts[test_ids] <<- predict(RF_fit, X_test, type='prob')[, 2]
+  pred_rf_ts <- predict(RF_fit, X_test, type='prob')[, 2]
   cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' evalFold-', iFold, ' predict on test end!\n')
+  
+  resp_pred_ts <- data.frame(resp=y_test, pred=pred_rf_ts)
   
   rocValues_train <- 
     roc(response=as.vector(y_train_val), 
@@ -40,8 +42,8 @@ runRF_eval <- function(iFold){
   auc_train <- rocValues_train$auc
   cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' get auc on training end!\n')
   
-  
-  return(auc_train)
+  resultLst <- list(auc_train=auc_train, resp_pred_ts=resp_pred_ts)
+  return(resultLst)
 }
 
 
@@ -82,26 +84,32 @@ runRF_grp <- function(grpId, cohort, resultDirPerCohort, outcome)
   
   saveRDS(evalFolds, file = paste0(resultDir_thisGrp, 'evalFolds.RDS'))
   # define container
-  pred_rf_ts <- numeric(length(y))
+#   pred_rf_ts <- numeric(length(y))
   
   sfInit(parallel=TRUE, cpus=nCore2Use4Eval, type='SOCK')
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
   
-  sfExport('X', 'y', 'evalFolds', 'wt', 'ntree', 'mtry', 'pred_rf_ts', 'traceFile', 'outcome'
+  sfExport('X', 'y', 'evalFolds', 'wt', 'ntree', 'mtry', 'traceFile', 'outcome'
            , 'newGrpVarsFlag')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
   sfClusterEval(library("pROC"))
   sfClusterEval(library("dplyr"))
-  auc_tr_allEvalFolds <- unlist(sfClusterApplyLB(1:kFoldsEval, runRF_eval))
+  temp=sfClusterApplyLB(1:kFoldsEval, runRF_eval)
   sfStop()
+  
+  auc_tr_allEvalFolds <- unlist(lapply(temp, function(X)X$auc_train))
   auc_tr_avg_acrossEvalFolds <- mean(auc_tr_allEvalFolds)
   # get the test auc
+  
+  resp_pred_ts <- ldply(lapply(temp, function(X)X$resp_pred_ts), rbind)
+  write.csv(resp_pred_ts, paste0(resultDir_thisGrp, 'resp_pred_ts.csv'))
+  
   rocValues_test <- 
-    roc(response=as.vector(y), 
-        predictor=as.vector(pred_rf_ts),
+    roc(response=as.vector(resp_pred_ts$resp), 
+        predictor=as.vector(resp_pred_ts$pred),
         direction="<")
   auc_test <- rocValues_test$auc
   cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag, ' get auc on test end!\n')
