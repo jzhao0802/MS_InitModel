@@ -48,6 +48,7 @@ main <- function(arglist)
   resultDirPerCohort <- paste0(resultDir, cohort, "/")
   dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
   traceFile <- paste0(resultDirPerCohort, 'traceFile.csv')
+  cat(file=traceFile, append = T, 'wt-', paste0(wt, collapse = ','), ' ntree-', ntree, ' mtry-', mtry, '\n')
   
   cat(file=traceFile, append = T, "parallel on outcomes starts!\n")
   sfInit(parallel=TRUE, cpus=nCore2Use4Outcome, type='SOCK')

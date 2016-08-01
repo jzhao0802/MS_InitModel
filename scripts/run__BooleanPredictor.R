@@ -11,8 +11,8 @@ main.arglist$nCores2Use <- c(n.outcome=1, n.grp=7, n.evlFolds=5)
 main.arglist$kFoldsEval <- 5
 
 main.arglist$wt <- c("0"=1, "1"=1)
-main.arglist$ntree <- 300
-main.arglist$mtry <- 20
+main.arglist$ntree <- 100
+main.arglist$mtry <- 8
 
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
 main.arglist$outcomeNamesAll <- c("relapse_fu_any_01", "edssprog", "edssconf3",
