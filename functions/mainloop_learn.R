@@ -195,17 +195,24 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
         matrix(data=-1, nrow=kFoldsEval, ncol=1)
       
       params_allfolds <- matrix(data=-1, nrow=kFoldsEval, ncol=2)
-      colnames(params_allfolds) <- c("alpha", "lambda")
-      rownames(params_allfolds) <- rep("", nrow(params_allfolds))
-      
-      # variable importance rankings
-      ranks_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
-      colnames(ranks_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
-      rownames(ranks_allalphas_folds) <- colnames(X)
-      
-      coefs_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
-      colnames(coefs_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
-      rownames(coefs_allalphas_folds) <- colnames(X)
+      if(bRF){
+        colnames(params_allfolds) <- c("ntree", "mtry")
+        rownames(params_allfolds) <- rep("", nrow(params_allfolds))
+        
+      }else{
+        colnames(params_allfolds) <- c("alpha", "lambda")
+        rownames(params_allfolds) <- rep("", nrow(params_allfolds))
+        
+        # variable importance rankings
+        ranks_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
+        colnames(ranks_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
+        rownames(ranks_allalphas_folds) <- colnames(X)
+        
+        coefs_allalphas_folds <- matrix(data=-1, nrow=ncol(X), ncol=n_alphas*kFoldsEval)
+        colnames(coefs_allalphas_folds) <- rep("", n_alphas*kFoldsEval)
+        rownames(coefs_allalphas_folds) <- colnames(X)
+        
+      }
       
       
       cat("Fold ")
