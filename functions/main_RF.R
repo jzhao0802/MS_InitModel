@@ -51,7 +51,7 @@ main <- function(arglist)
   
   sfInit(parallel=TRUE, cpus=nCore2Use4Outcome, type='SOCK')
   sfSource("functions/funs_RF.R")
-  
+  sfSource("functions/manualStratify.R")
   sfExport('nCore2Use4Grp', 'nCore2Use4Eval', 'kFoldsEval', 'outcomeNames',
            'outcomeNamesAll', 'cohort', 'data', 'newGrpVarsLst')
   sfExport('createCurve', 'grid_search_v2')

@@ -66,6 +66,7 @@ runRF_grp <- function(grpId, cohort, resultDir, outcome)
   runRF_eval(evalFold, newGrpVarsFlag)
   sfInit(parallel=TRUE, cpus=num_pros, type='SOCK')
   sfSource("functions/funs_RF.R")
+  sfSource("functions/manualStratify.R")
   
   sfExport('X', 'y', 'evalFolds')
   sfExport('createCurve', 'grid_search_v2')
@@ -99,9 +100,9 @@ runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDir){
   
   sfInit(parallel=TRUE, cpus=num_pros, type='SOCK')
   sfSource("functions/funs_RF.R")
+  sfSource("functions/manualStratify.R")
   
-  sfExport('data', 'newGrpVarsLst', 'newGrpVarsLst', 'foldid',
-           'lambda_seq', 'grid')
+  sfExport('data', 'newGrpVarsLst')
   sfExport('createCurve', 'grid_search_v2')
   sfClusterEval(library("glmnet"))
   sfClusterEval(library("ROCR"))
