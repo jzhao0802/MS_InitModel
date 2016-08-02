@@ -19,7 +19,7 @@ main.arglist$outcomeNamesAll <- c("relapse_fu_any_01", "edssprog", "edssconf3",
                                "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
 
 main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3")
-main.arglist$outcomeNames <- c("edssconf3")
+# main.arglist$outcomeNames <- c("edssconf3")
 
 
 # main.arglist$cohortNames <- c("BConti", "B2B", "B2Fir", "B2Sec")
