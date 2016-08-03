@@ -15,11 +15,14 @@ main.arglist$log_lambda_seq <- c(seq(log(1e-20),log(1e4),length.out=100))
 main.arglist$bClassWeights <- T
 main.arglist$n_repeats <- 1
 
-main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
-main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3",
-                           "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
-# main.arglist$outcomeNames <- c("edssconf3")
-
+main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-08-03/2016-08-03 09.40.35/"
+# main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3",
+#                            "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
+main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3")
+main.arglist$outcome_vars2Rm <- data.frame(
+  outcome=c("relapse_fu_any_01", 'edssprog', 'edssconf3')
+  , exp = c('^pre_\\d_\\w{0,1}deg_disab$', '^init_\\w+$', '^pre_\\d_\\w{0,1}deg_disab$')
+)
 # main.arglist$cohortNames <- c("BConti", "B2B", "B2Fir", "B2Sec")
 main.arglist$cohortNames <- c("Cmp")
 

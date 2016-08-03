@@ -120,7 +120,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                            cohortNames, outcomeNames,
                            idColName,
                            bTopVarsOnly, nTopVars, initEnetDir,
-                           resultDir)
+                           resultDir, outcome_vars2Rm)
 {
   fileAvAUCs_test <- file(paste(resultDir, "AvAUCs_test.csv", sep=""), "w")
   fileAvAUCs_train <- file(paste(resultDir, "AvAUCs_train.csv", sep=""), "w")
@@ -139,6 +139,9 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
     for (outcomeName in outcomeNames)
     {
       cat(paste0(outcomeName, "\n"))
+      
+      exp <- as.character(outcome_vars2Rm[match(outcomeName, as.character(outcome_vars2Rm$outcome)), 'exp'])
+      dataset <- dataset %>% select(-one_of(grep(exp, names(dataset), value=T, ignore.case=T)))
       
       resultDirPerOutcome <- paste0(resultDirPerCohort, outcomeName, "/")
       dir.create(resultDirPerOutcome, showWarnings = TRUE, recursive = TRUE, mode = "0777")

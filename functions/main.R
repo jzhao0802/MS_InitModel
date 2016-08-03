@@ -50,7 +50,7 @@ main <- function(arglist)
   lambda_seq <- exp(log_lambda_seq)
   
   outcomeNames <- arglist$outcomeNames
-  
+  outcome_vars2Rm <- arglist$outcome_vars2Rm
   data_dir <- arglist$data_dir
   if (bTransferLearn)
   {
@@ -116,7 +116,8 @@ main <- function(arglist)
                      cohortNames=cohortNames, outcomeNames=outcomeNames,
                      idColName=idColName, bTopVarsOnly=bTopVarsOnly, 
                      nTopVars=nTopVars, initEnetDir=initEnetDir,
-                     resultDir=resultDir_thisrepeat)
+                     resultDir=resultDir_thisrepeat,
+                     outcome_vars2Rm=outcome_vars2Rm)
   }
   
   
