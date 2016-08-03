@@ -17,9 +17,10 @@ main <- function(arglist)
   nCore2Use4Eval <- nCores2Use[3]
   nCore2Use4Val <- nCores2Use[4]
   
-  wt <- arglist$wt
-  ntree <- arglist$ntree
-  mtry <- arglist$mtry
+  wts <- arglist$wts
+  ntreeList <- arglist$ntreeList
+  mtryList <- arglist$mtryList
+  negRateList <- arglist$negRateList
   
   kFoldsEval <- arglist$kFoldsEval
   
@@ -53,7 +54,11 @@ main <- function(arglist)
   resultDirPerCohort <- paste0(resultDir, cohort, "/")
   dir.create(resultDirPerCohort, showWarnings = TRUE, recursive = TRUE, mode = "0777")
   traceFile <- paste0(resultDirPerCohort, 'traceFile.csv')
-  cat(file=traceFile, append = T, 'wt-', paste0(wt, collapse = ','), ' ntree-', ntree, ' mtry-', mtry, '\n')
+  ntreeVct <- paste0(ntreeList, collapse = ',')
+  mtryVct <- paste0(mtryList, collapse = ',')
+  negRateVct <- paste0(negRateList, collapse = ',')
+  
+  cat(file=traceFile, append = T, 'negRate-', negRateVct, ' ntree-', ntreeVct, ' mtry-', mtryVct, ' bTest-', bTest, '\n')
   
   cat(file=traceFile, append = T, "parallel on outcomes starts!\n")
   sfInit(parallel=TRUE, cpus=nCore2Use4Outcome, type='SOCK')
@@ -61,8 +66,8 @@ main <- function(arglist)
   sfSource("functions/manualStratify.R")
   sfExport('nCore2Use4Grp', 'nCore2Use4Eval', 'kFoldsEval', 'outcomeNames', 'traceFile'
            , 'outcomeNamesAll', 'cohort', 'data', 'newGrpVarsLst'
-           , 'resultDirPerCohort', 'raw_data', 'grid')
-  sfExport('manualStratify', 'runRF_grp', 'runRF_eval')
+           , 'resultDirPerCohort', 'raw_data', 'grid', 'kFoldsVal', 'nCore2Use4Val')
+  sfExport('manualStratify', 'runRF_grp', 'runRF_eval', 'runRF_grid')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
@@ -72,6 +77,8 @@ main <- function(arglist)
   temp <- sfClusterApplyLB(outcomeNames, runRF_outcome
                            , data, newGrpVarsLst, cohort, resultDirPerCohort)
   sfStop()
+  cat(file=traceFile, append = T, 'negRate-', negRateVct, ' ntree-', ntreeVct, ' mtry-', mtryVct, ' bTest-', bTest, 'final auc tables bind together!\n')
+  
   outcomes_grp_auc_tr_ts <- ldply(temp, rbind)
   names(outcomes_grp_auc_tr_ts) <- c("Outcome", 'Group', "AUC_on_training", "AUC_on_test")
   

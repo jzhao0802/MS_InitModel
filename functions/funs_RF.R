@@ -1,8 +1,9 @@
 runRF_grid <- function(iGrid){
-  iCvFold <- grid$valFold[iGrid]
-  ntree <- grid$ntree[iGrid]
-  mtry <- grid$mtry[iGrid]
-  negRate <- grid$negRate[iGrid]
+  thisGrid <- grid[iGrid,]
+  iCvFold <- thisGrid$valFold
+  ntree <- thisGrid$ntree
+  mtry <- thisGrid$mtry
+  negRate <- thisGrid$negRate
   
   y_train_val <- y_train_val
   
@@ -87,25 +88,27 @@ runRF_eval <- function(iFold){
   sfClusterEval(library("plyr"))
   sfClusterEval(library("pROC"))
   sfClusterEval(library("dplyr"))
-  temp=sfClusterApplyLB(1:kFoldsEval, runRF_grid)
+  temp=sfClusterApplyLB(1:nrow(grid), runRF_grid)
   sfStop()
   cvFld_grid_auc <- ldply(temp, rbind)
   names(cvFld_grid_auc) <- c("cvFold", 'ntree', 'mtry', 'negRate', 'auc_test_cv')
   
-  # select the optimum grid
-  library(plyr)
-  auc_avgOnGrid <- x %>%
-    group_by(ntree) %>%
-    {
-      detach("package:plyr", character.only = T)
-      library('dplyr')
-      
-    } %>%
-    summarise_each(funs(mean), negRate)
+#   select the optimum grid
+#   library(plyr)
+#   auc_avgOnGrid <- x %>%
+#     group_by(ntree) %>%
+#     {
+#       detach("package:plyr", character.only = T)
+#       library('dplyr')
+#       
+#     } %>%
+#     summarise_each(funs(mean), negRate)
   auc_avgOnGrid <- aggregate(. ~ ntree + mtry + negRate
-                             , data=cvFld_grid_auc, mean)[, -match('cvFold', names(cvFld_grid_auc))]
+                             , data=cvFld_grid_auc, mean) %>%
+    select(-cvFold)
   
-  opt_idx <- which(auc_avgOnGrid$auc_test_cv=max(auc_avgOnGrid$auc_test_cv))
+  
+  opt_idx <- which(auc_avgOnGrid$auc_test_cv==max(auc_avgOnGrid$auc_test_cv))
   if(opt_idx>1)
     opt_idx <- sample(opt_idx, 1)
   
@@ -113,7 +116,7 @@ runRF_eval <- function(iFold){
   opt_mtry <- auc_avgOnGrid[opt_idx, "mtry"]
   opt_negRate <- auc_avgOnGrid[opt_idx, "negRate"]
   opt_n_pos <- sum(y_train_val)
-  opt_n_neg_smp <- opt_n_pos*negRate
+  opt_n_neg_smp <- opt_n_pos*opt_negRate
   cat(file=traceFile, append = T, 'outcome-', outcome, ' grp-', newGrpVarsFlag
       , ' evalFold-', iFold, ' opt_ntree-', opt_ntree, ' opt_mtry-', opt_mtry
       , ' opt_negRate', opt_negRate, '!\n')
@@ -192,14 +195,15 @@ runRF_grp <- function(grpId, cohort, resultDirPerCohort, outcome)
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
   
-  sfExport('X', 'y', 'evalFolds', 'wt', 'ntree', 'mtry', 'traceFile', 'outcome'
-           , 'newGrpVarsFlag', 'grid')
+  sfExport('X', 'y', 'evalFolds', 'traceFile', 'outcome', 'nCore2Use4Val'
+           , 'newGrpVarsFlag', 'grid', 'kFoldsVal', 'resultDir_thisGrp')
   sfExport('runRF_grid', 'manualStratify')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
   sfClusterEval(library("plyr"))
   sfClusterEval(library("pROC"))
   sfClusterEval(library("dplyr"))
+  sfClusterEval(library("snowfall"))
   temp=sfClusterApplyLB(1:kFoldsEval, runRF_eval)
   sfStop()
   
@@ -243,7 +247,7 @@ runRF_outcome <- function(outcome, data, newGrpVarsLst, cohort, resultDirPerCoho
   sfSource("functions/manualStratify.R")
   
   sfExport('data', 'newGrpVarsLst', 'resultDirPerCohort', "outcome", 'nCore2Use4Eval', 'kFoldsEval'
-           , 'traceFile', 'raw_data', 'grid')
+           , 'traceFile', 'raw_data', 'grid', 'kFoldsVal', 'nCore2Use4Val')
   sfExport('manualStratify', 'runRF_eval', 'runRF_grid')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))

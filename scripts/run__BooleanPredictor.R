@@ -6,7 +6,6 @@ source("functions/main_RF.R")
 
 main.arglist <- list()
 main.arglist$bParallel <- F
-main.arglist$nCores2Use <- c(n.outcome=1, n.grp=8, n.evlFolds=5, n.valFolds=1)
 
 main.arglist$kFoldsEval <- 5
 main.arglist$kFoldsVal <- 5
@@ -120,6 +119,12 @@ main.arglist$newGrpVarsLst <- list(
 
 # saveRDS(main.arglist$newGrpVarsLst
 #         , paste0("F:/Jie/MS/01_Data/newGrpVarsLst.RDS"))
+bTest <- F
+
+if(bTest){
+  main.arglist$newGrpVarsLst <- main.arglist$newGrpVarsLst[1:4]
+}
+main.arglist$nCores2Use <- c(n.outcome=3, n.grp=13, n.evlFolds=1, n.valFolds=1)
 
 global.seed <- 1
 set.seed(global.seed)
