@@ -130,7 +130,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
   {
     cat(paste0(cohortNames[iCohort], ", "))
     
-    dataset <- read.csv(paste0(data_dir, cohortNames[iCohort], dataFileSuffix), 
+    dataset_org <- read.csv(paste0(data_dir, cohortNames[iCohort], dataFileSuffix), 
                         header=TRUE, sep=",", check.names=FALSE)
     
     resultDirPerCohort <- paste0(resultDir, cohortNames[iCohort], "/")
@@ -141,7 +141,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       cat(paste0(outcomeName, "\n"))
       
       exp <- as.character(outcome_vars2Rm[match(outcomeName, as.character(outcome_vars2Rm$outcome)), 'exp'])
-      dataset <- dataset %>% select(-one_of(grep(exp, names(dataset), value=T, ignore.case=T)))
+      dataset <- dataset_org %>% select(-one_of(grep(exp, names(dataset_org), value=T, ignore.case=T)))
       
       resultDirPerOutcome <- paste0(resultDirPerCohort, outcomeName, "/")
       dir.create(resultDirPerOutcome, showWarnings = TRUE, recursive = TRUE, mode = "0777")
