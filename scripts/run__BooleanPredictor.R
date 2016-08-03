@@ -6,13 +6,25 @@ source("functions/main_RF.R")
 
 main.arglist <- list()
 main.arglist$bParallel <- F
-main.arglist$nCores2Use <- c(n.outcome=1, n.grp=7, n.evlFolds=5)
+main.arglist$nCores2Use <- c(n.outcome=1, n.grp=8, n.evlFolds=5, n.valFolds=1)
 
 main.arglist$kFoldsEval <- 5
+main.arglist$kFoldsVal <- 5
+main.arglist$wts <- list(c("0"=1, "1"=0.4)
+                         , c("0"=1, "1"=0.63)
+                         , c("0"=1, "1"=1)
+                         )
+main.arglist$negRateList <- c(0.4, 0.63, 1)
+# main.arglist$wt <- NULL
 
-main.arglist$wt <- c("0"=1, "1"=1)
-main.arglist$ntree <- 100
-main.arglist$mtry <- 8
+main.arglist$ntreeList <- c(100, 200, 500)
+main.arglist$mtryList <- 25
+
+main.arglist$grid <- expand.grid(ntree=main.arglist$ntreeList
+                                 , mtry=main.arglist$mtry
+                                 , negRate=main.arglist$negRateList
+                                 , valFold=1:main.arglist$kFoldsVal
+                                 )
 
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
 main.arglist$outcomeNamesAll <- c("relapse_fu_any_01", "edssprog", "edssconf3",

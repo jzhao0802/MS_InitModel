@@ -15,13 +15,16 @@ main <- function(arglist)
   nCore2Use4Outcome <- nCores2Use[1]
   nCore2Use4Grp <- nCores2Use[2]
   nCore2Use4Eval <- nCores2Use[3]
+  nCore2Use4Val <- nCores2Use[4]
   
   wt <- arglist$wt
   ntree <- arglist$ntree
   mtry <- arglist$mtry
   
   kFoldsEval <- arglist$kFoldsEval
-
+  
+  kFoldsVal <- arglist$kFoldsVal
+  
   outcomeNames <- arglist$outcomeNames
   outcomeNamesAll <- arglist$outcomeNamesAll
   data_dir <- arglist$data_dir
@@ -32,6 +35,8 @@ main <- function(arglist)
   
   newGrpVarsLst <- arglist$newGrpVarsLst
 
+  grid <- main.arglist$grid
+  
   ptm <- proc.time()
   
   timeStamp <- as.character(Sys.time())
@@ -55,8 +60,8 @@ main <- function(arglist)
   sfSource("functions/funs_RF.R")
   sfSource("functions/manualStratify.R")
   sfExport('nCore2Use4Grp', 'nCore2Use4Eval', 'kFoldsEval', 'outcomeNames', 'traceFile'
-           , 'outcomeNamesAll', 'cohort', 'data', 'newGrpVarsLst', 'wt', 'ntree', 'mtry'
-           , 'resultDirPerCohort', 'raw_data')
+           , 'outcomeNamesAll', 'cohort', 'data', 'newGrpVarsLst'
+           , 'resultDirPerCohort', 'raw_data', 'grid')
   sfExport('manualStratify', 'runRF_grp', 'runRF_eval')
   sfClusterEval(library("randomForest"))
   sfClusterEval(library("ROCR"))
