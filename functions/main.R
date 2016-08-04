@@ -51,7 +51,7 @@ main <- function(arglist)
   
   outcomeNames <- arglist$outcomeNames
   outcomeNamesAll <- arglist$outcomeNamesAll
-  outcome_vars2Rm <- arglist$outcome_vars2Rm
+  outcome_vars2add <- arglist$outcome_vars2add
   data_dir <- arglist$data_dir
   if (bTransferLearn)
   {
@@ -119,7 +119,7 @@ main <- function(arglist)
                      idColName=idColName, bTopVarsOnly=bTopVarsOnly, 
                      nTopVars=nTopVars, initEnetDir=initEnetDir,
                      resultDir=resultDir_thisrepeat,
-                     outcome_vars2Rm=outcome_vars2Rm)
+                     outcome_vars2add=outcome_vars2add)
   }
   
   

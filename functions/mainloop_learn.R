@@ -133,7 +133,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                            cohortNames, outcomeNames, outcomeNamesAll,
                            idColName,
                            bTopVarsOnly, nTopVars, initEnetDir,
-                           resultDir, outcome_vars2Rm)
+                           resultDir, outcome_vars2add)
 {
   fileAvAUCs_test <- file(paste(resultDir, "AvAUCs_test.csv", sep=""), "w")
   fileAvAUCs_train <- file(paste(resultDir, "AvAUCs_train.csv", sep=""), "w")
@@ -152,9 +152,12 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
     for (outcomeName in outcomeNames)
     {
       cat(paste0(outcomeName, "\n"))
-      
-      exp <- as.character(outcome_vars2Rm[match(outcomeName, as.character(outcome_vars2Rm$outcome)), 'exp'])
-      dataset <- dataset_org %>% select(-one_of(grep(exp, names(dataset_org), value=T, ignore.case=T)))
+      exp4rm <- as.character(outcome_vars2add[-match(outcomeName, as.character(outcome_vars2add$outcome)), 'exp'])
+      vars2rm <- unlist(lapply(exp4rm, function(exp){
+        vars <- grep(exp, names(dataset_org), value = T, ignore.case = T)
+        return(vars)
+      }))
+      dataset <- dataset_org %>% select(-one_of(vars2rm))
       
       resultDirPerOutcome <- paste0(resultDirPerCohort, outcomeName, "/")
       dir.create(resultDirPerOutcome, showWarnings = TRUE, recursive = TRUE, mode = "0777")
