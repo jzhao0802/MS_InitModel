@@ -16,8 +16,8 @@ main.arglist$bClassWeights <- T
 main.arglist$n_repeats <- 1
 
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-08-03/2016-08-03 09.40.35/"
-# main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3",
-#                            "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
+main.arglist$outcomeNamesAll <- c("relapse_fu_any_01", "edssprog", "edssconf3",
+                           "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
 main.arglist$outcomeNames <- c("relapse_fu_any_01", "edssprog", "edssconf3")
 main.arglist$outcome_vars2Rm <- data.frame(
   outcome=c("relapse_fu_any_01", 'edssprog', 'edssconf3')

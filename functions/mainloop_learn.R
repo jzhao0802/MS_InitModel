@@ -117,7 +117,7 @@ selectAlphaLambda_BuiltInCV <- function(alphaVals, X_train_val, y_train_val,
 mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVals, 
                            log_lambda_seq, bClassWeights, 
                            n_alphas, lambda_seq, data_dir, dataFileSuffix, 
-                           cohortNames, outcomeNames,
+                           cohortNames, outcomeNames, outcomeNamesAll,
                            idColName,
                            bTopVarsOnly, nTopVars, initEnetDir,
                            resultDir, outcome_vars2Rm)
@@ -150,7 +150,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
       y <- dataset[, outcomeName]
       
       if(!bTopVarsOnly){
-        X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName)))
+        X <- dplyr::select(dataset, -one_of(c(outcomeNamesAll, idColName)))
       }else{
         topVarsDir <- paste0(initEnetDir, '1\\', cohortNames[iCohort], 
                                '\\', outcomeName, '\\')
@@ -159,7 +159,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                              sep=',', header = T, stringsAsFactors = F)
         topVars <- rownames(avRank)[order(avRank$x, decreasing = F)][1:nTopVars]
         
-        X <- dplyr::select(dataset, -one_of(c(outcomeNames, idColName))) %>%
+        X <- dplyr::select(dataset, -one_of(c(outcomeNamesAll, idColName))) %>%
           select(one_of(topVars))
         
       }
