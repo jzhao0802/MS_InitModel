@@ -40,7 +40,7 @@ main.arglist$initEnetDir <-
 global.seed <- 1
 set.seed(global.seed)
 
-Btest=T
+Btest=F
 
 if(Btest){
   main.arglist$log_lambda_seq <- main.arglist$log_lambda_seq[1:5]
