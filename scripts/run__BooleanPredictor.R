@@ -11,7 +11,7 @@ main.arglist$nCores2Use <- detectCores() - 1
 main.arglist$kFoldsEval <- 5
 main.arglist$kFoldsVal <- 5
 main.arglist$alphaVals <- seq(0,1,length.out=21)
-main.arglist$log_lambda_seq <- c(seq(log(1e-20),log(1e4),length.out=100))
+# main.arglist$log_lambda_seq <- c(seq(log(1e-20),log(1e4),length.out=100))
 main.arglist$bClassWeights <- T
 main.arglist$n_repeats <- 1
 
@@ -32,10 +32,10 @@ main.arglist$bManualCV <- F
 
 main.arglist$dataFileSuffix <- '4Model.csv'
 
-main.arglist$bTopVarsOnly <- F
+main.arglist$bTopVarsOnly <- T
 main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
-  "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.15.57/"
+  "F:/Jie/MS/03_Result/2016-08-08/2016-08-08 08.19.05/"
 
 global.seed <- 1
 set.seed(global.seed)
