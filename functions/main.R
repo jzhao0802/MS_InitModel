@@ -42,15 +42,16 @@ main <- function(arglist)
   kFoldsEval <- arglist$kFoldsEval
   kFoldsVal <- arglist$kFoldsVal
   alphaVals <- arglist$alphaVals
-  log_lambda_seq <- arglist$log_lambda_seq
+  # log_lambda_seq <- arglist$log_lambda_seq
   bClassWeights <- arglist$bClassWeights
   n_repeats <- arglist$n_repeats
   
   n_alphas <- length(alphaVals)
-  lambda_seq <- exp(log_lambda_seq)
+  # lambda_seq <- exp(log_lambda_seq)
   
   outcomeNames <- arglist$outcomeNames
   AllOutcomes4Remove <- arglist$AllOutcomes4Remove
+
   data_dir <- arglist$data_dir
   if (bTransferLearn)
   {
@@ -110,14 +111,18 @@ main <- function(arglist)
     else
       mainloop_learn(bParallel=bParallel, bManualCV=bManualCV, kFoldsEval=kFoldsEval, 
                      kFoldsVal=kFoldsVal, alphaVals=alphaVals, 
-                     log_lambda_seq=log_lambda_seq, bClassWeights=bClassWeights, 
-                     n_alphas=n_alphas, lambda_seq=lambda_seq, data_dir=data_dir, 
+                     bClassWeights=bClassWeights, 
+                     n_alphas=n_alphas
+                     # , lambda_seq=lambda_seq
+                     , data_dir=data_dir, 
                      dataFileSuffix = dataFileSuffix,
                      cohortNames=cohortNames, outcomeNames=outcomeNames,
                      AllOutcomes4Remove = AllOutcomes4Remove,
+
                      idColName=idColName, bTopVarsOnly=bTopVarsOnly, 
                      nTopVars=nTopVars, initEnetDir=initEnetDir,
-                     resultDir=resultDir_thisrepeat)
+                     resultDir=resultDir_thisrepeat
+                     )
   }
   
   
