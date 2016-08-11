@@ -33,10 +33,10 @@ main.arglist$bManualCV <- F
 
 main.arglist$dataFileSuffix <- '4Model.csv'
 
-main.arglist$bTopVarsOnly <- F
+main.arglist$bTopVarsOnly <- T
 main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
-  "F:/Jie/MS/03_Result/2016-08-11/2016-08-11 10.54.55/"
+  "F:/Jie/MS/03_Result/2016-08-11/2016-08-11 12.00.36/"
 
 global.seed <- 1
 set.seed(global.seed)
