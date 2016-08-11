@@ -23,8 +23,9 @@ main.arglist$AllOutcomes4Remove <- c("relapse_fu_any_01", "edssprog", "edssconf3
                            "relapse_or_prog", "relapse_and_prog", "relapse_or_conf")
 
 # main.arglist$cohortNames <- c("BConti", "B2B", "B2Fir", "B2Sec")
-main.arglist$cohortNames <- c("BConti", "B2Fir", "B2B", 'B2Sec')
+main.arglist$cohortNames <- c( "B2B")
 
+main.arglist$express.vars2remove4B2B <- "^pre[2-3]_edss\\w+__\\w+$"
 main.arglist$idColName <- c("record_num")
 
 main.arglist$bTransferLearn <- F
@@ -32,10 +33,10 @@ main.arglist$bManualCV <- F
 
 main.arglist$dataFileSuffix <- '4Model.csv'
 
-main.arglist$bTopVarsOnly <- T
+main.arglist$bTopVarsOnly <- F
 main.arglist$nTopVars <- 10
 main.arglist$initEnetDir <- 
-  "F:/Jie/MS/03_Result/2016-08-08/2016-08-08 08.19.05/"
+  "F:/Jie/MS/03_Result/2016-08-11/2016-08-11 10.54.55/"
 
 global.seed <- 1
 set.seed(global.seed)
