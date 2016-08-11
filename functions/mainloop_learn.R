@@ -139,7 +139,7 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
                            cohortNames, outcomeNames, AllOutcomes4Remove,
                            idColName,
                            bTopVarsOnly, nTopVars, initEnetDir,
-                           resultDir, outcome_vars2add)
+                           resultDir, outcome_vars2add, express.vars2remove4B2B)
 {
   fileAvAUCs_test <- file(paste(resultDir, "AvAUCs_test.csv", sep=""), "w")
   fileAvAUCs_train <- file(paste(resultDir, "AvAUCs_train.csv", sep=""), "w")
@@ -151,6 +151,10 @@ mainloop_learn <- function(bParallel, bManualCV, kFoldsEval, kFoldsVal, alphaVal
     
     dataset <- read.csv(paste0(data_dir, cohortNames[iCohort], dataFileSuffix), 
                         header=TRUE, sep=",", check.names=FALSE)
+    if(cohortNames[iCohort]=="B2B"){
+      dataset <- dataset %>%
+        select(-one_of(grep(express.vars2remove4B2B, names(dataset), value=T)))
+    }
     # var1 <- names(dataset)
 #     # remove the constant variables
 #     Bconstant <- unlist(lapply(names(dataset), function(var)length(table(dataset[, var]))==1))

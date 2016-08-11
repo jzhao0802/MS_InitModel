@@ -51,7 +51,8 @@ main <- function(arglist)
   
   outcomeNames <- arglist$outcomeNames
   AllOutcomes4Remove <- arglist$AllOutcomes4Remove
-
+  express.vars2remove4B2B <- arglist$express.vars2remove4B2B
+  
   data_dir <- arglist$data_dir
   if (bTransferLearn)
   {
@@ -121,7 +122,8 @@ main <- function(arglist)
 
                      idColName=idColName, bTopVarsOnly=bTopVarsOnly, 
                      nTopVars=nTopVars, initEnetDir=initEnetDir,
-                     resultDir=resultDir_thisrepeat
+                     resultDir=resultDir_thisrepeat,
+                     express.vars2remove4B2B=express.vars2remove4B2B
                      )
   }
   
