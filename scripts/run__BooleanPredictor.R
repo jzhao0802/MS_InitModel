@@ -9,21 +9,30 @@ main.arglist$bParallel <- F
 
 main.arglist$kFoldsEval <- 5
 main.arglist$kFoldsVal <- 5
-main.arglist$wts <- list(c("0"=1, "1"=0.4)
-                         , c("0"=1, "1"=0.63)
-                         , c("0"=1, "1"=1)
+main.arglist$wts <- list(c("-1"=1, "1"=0.4)
+                         , c("-1"=1, "1"=0.63)
+                         , c("-1"=1, "1"=1)
                          )
-main.arglist$negRateList <- c(0.4, 0.63, 1)
+main.arglist$cost <- c(0.4, 0.63, 1)
 # main.arglist$wt <- NULL
 
-main.arglist$ntreeList <- c(100, 200, 500)
-main.arglist$mtryList <- 25
+main.arglist$gamma <- c(100, 200, 500)
+main.arglist$svmType <- "C-classification"
+main.arglist$kerType <- "linear"
+main.arglist$bScale <- FALSE
 
-main.arglist$grid <- expand.grid(ntree=main.arglist$ntreeList
-                                 , mtry=main.arglist$mtry
-                                 , negRate=main.arglist$negRateList
+main.arglist$grid <- ifelse(main.arglist$kertype == "linear"
+                            , expand.grid(cost=main.arglist$cost
+                                          # , gamma=main.arglist$gamma
+                                          , wt=main.arglist$wts
+                                          , valFold=1:main.arglist$kFoldsVal
+                            )
+                            , expand.grid(cost=main.arglist$cost
+                                 , gamma=main.arglist$gamma
+                                 , wt=main.arglist$wts
                                  , valFold=1:main.arglist$kFoldsVal
                                  )
+                            )
 
 main.arglist$data_dir <- "F:/Jie/MS/03_Result/2016-07-26/2016-07-26 04.08.00/"
 main.arglist$outcomeNamesAll <- c("relapse_fu_any_01", "edssprog", "edssconf3",
@@ -119,12 +128,13 @@ main.arglist$newGrpVarsLst <- list(
 
 # saveRDS(main.arglist$newGrpVarsLst
 #         , paste0("F:/Jie/MS/01_Data/newGrpVarsLst.RDS"))
-bTest <- F
+bTest <- T
 
 if(bTest){
-  main.arglist$newGrpVarsLst <- main.arglist$newGrpVarsLst[1:4]
+  main.arglist$grid <- main.arglist$grid[1:5, ]
+  main.arglist$outcomeNames <- main.arglist$outcomeNames[1:2]
 }
-main.arglist$nCores2Use <- c(n.outcome=3, n.grp=13, n.evlFolds=1, n.valFolds=1)
+main.arglist$nCores2Use <- c(n.outcome=2, n.grp=1, n.evlFolds=5, n.valFolds=1)
 
 global.seed <- 1
 set.seed(global.seed)
